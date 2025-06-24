@@ -5,7 +5,9 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
-include 'db.php';
+require_once('path.inc');
+require_once('getHostInfo.inc');
+require_once('rabbitMQLib.inc');
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
@@ -19,36 +21,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    // Check if username/email already exists
-    $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-    $stmt->bind_param("ss", $username, $email);
-    $stmt->execute();
-    $stmt->store_result();
+    try {
+        $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
 
-    if ($stmt->num_rows > 0) {
-        header("Location: register.html?error=Username or email already exists");
+        // new registration request
+        $request = array(
+            "type" => "register",
+            "username" => $username,
+            "email" => $email,
+            "password" => $password
+        );
+
+        $response = $client->send_request($request);
+
+        echo "received";
+
+    } catch (Exception $e) {
+        error_log("rabbitmq error" . $e->getMessage());
         exit();
     }
 
-    // Hash the password
-    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-    // Insert new user
-    $stmt = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
-    $stmt->bind_param("sss", $username, $email, $hashedPassword);
-
-    if ($stmt->execute()) {
-        $_SESSION['user_id'] = $stmt->insert_id;
-        $_SESSION['username'] = $username;
-
-        // Set localStorage and redirect
-        echo "<script>
-          localStorage.setItem('loggedIn', 'true');
-          window.location.href = 'index.php';
-        </script>";
-        exit();
-    } else {
-        echo "Error: " . $stmt->error;
-    }
 }
+
+
 ?>
