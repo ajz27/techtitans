@@ -1,0 +1,131 @@
+/* Base page style */
+body {
+  background: linear-gradient(135deg, #1c50b1, #d6ff09); /* Modern gradient */
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* Navbar styles */
+#navbar {
+  background-color: #ffffff;
+  padding: 15px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin-bottom: 30px;
+}
+
+#navbar a {
+  margin: 0 15px;
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  transition: color 0.2s ease;
+}
+
+#navbar a:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+/* Container for content */
+.container {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Headings */
+h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Form wrapper */
+form {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  margin: 0 auto 40px auto;
+}
+
+/* Input fields */
+input {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+input:focus {
+  outline: none;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+  border-color: #007bff;
+}
+
+/* Button */
+button, input[type="submit"] {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button:hover,
+input[type="submit"]:hover {
+  background-color: #0056b3;
+}
+
+/* Error message */
+#error-message {
+  color: red;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Dashboard spacing fix */
+body.dashboard {
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 30px;
+}
+
+/* Glassmorphism-style modern navbar */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
