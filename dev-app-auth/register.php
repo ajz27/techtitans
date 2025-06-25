@@ -50,18 +50,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         );
 
         // Send request to database server via RabbitMQ
-       // Send request to database server via RabbitMQ
         $response = $client->send_request($request);
 
-        // Convert response to array if it's an object
-        if (is_object($response)) {
-            $response = (array) $response;
-        }
+        // Convert to array format consistently to avoid stdClass errors
+        $responseArray = json_decode(json_encode($response), true);
 
-        if ($response && isset($response['success'])) {
-            if ($response['success']) {
+        if ($responseArray && isset($responseArray['success'])) {
+            if ($responseArray['success']) {
                 // Registration successful
-                $_SESSION['user_id'] = $response['user_id'];
+                $_SESSION['user_id'] = $responseArray['user_id'];
                 $_SESSION['username'] = $username;
 
                 echo "<script>
@@ -70,7 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </script>";
                 exit();
             } else {
-                $error = isset($response['message']) ? $response['message'] : "Registration failed";
+                $error = isset($responseArray['message']) ? $responseArray['message'] : "Registration failed";
                 header("Location: register.html?error=" . urlencode($error));
                 exit();
             }
