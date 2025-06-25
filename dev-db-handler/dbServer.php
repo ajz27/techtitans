@@ -22,14 +22,18 @@ function getDBConnection()
 
 function register($username, $email, $password)
 {
+    echo "Attempting to register user: $username with email: $email\n";
+    
     $conn = getDBConnection();
     if (!$conn) {
+        echo "Database connection failed\n";
         return array("success" => false, "message" => "Database connection failed");
     }
 
     // Check if email already exists
     $stmt = $conn->prepare("SELECT id FROM Users WHERE email = ?");
     if (!$stmt) {
+        echo "Prepare statement failed\n";
         $conn->close();
         return array("success" => false, "message" => "Database query error");
     }
@@ -39,6 +43,7 @@ function register($username, $email, $password)
     $stmt->store_result();
 
     if ($stmt->num_rows > 0) {
+        echo "Email already exists: $email\n";
         $stmt->close();
         $conn->close();
         return array("success" => false, "message" => "Email already exists");
@@ -47,10 +52,12 @@ function register($username, $email, $password)
 
     // Hash the password
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    echo "Password hashed successfully\n";
 
     // Insert new user
     $stmt = $conn->prepare("INSERT INTO Users (email, password) VALUES (?, ?)");
     if (!$stmt) {
+        echo "Insert prepare failed\n";
         $conn->close();
         return array("success" => false, "message" => "Database prepare error");
     }
@@ -59,6 +66,7 @@ function register($username, $email, $password)
 
     if ($stmt->execute()) {
         $userId = $stmt->insert_id;
+        echo "User registered successfully with ID: $userId\n";
         $stmt->close();
         $conn->close();
 
@@ -71,6 +79,7 @@ function register($username, $email, $password)
         );
     } else {
         $error = $stmt->error;
+        echo "Insert failed: $error\n";
         $stmt->close();
         $conn->close();
         return array("success" => false, "message" => "Registration failed: " . $error);
