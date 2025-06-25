@@ -50,7 +50,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         );
 
         // Send request to database server via RabbitMQ
+       // Send request to database server via RabbitMQ
         $response = $client->send_request($request);
+
+        // Convert response to array if it's an object
+        if (is_object($response)) {
+            $response = (array) $response;
+        }
 
         if ($response && isset($response['success'])) {
             if ($response['success']) {
@@ -58,14 +64,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_id'] = $response['user_id'];
                 $_SESSION['username'] = $username;
 
-                // Set localStorage and redirect
                 echo "<script>
                   localStorage.setItem('loggedIn', 'true');
                   window.location.href = 'index.php';
                 </script>";
                 exit();
             } else {
-                // Registration failed
                 $error = isset($response['message']) ? $response['message'] : "Registration failed";
                 header("Location: register.html?error=" . urlencode($error));
                 exit();
