@@ -3,7 +3,7 @@ require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 
-// Database credentials
+// database credentials
 $DB_HOST = '10.0.0.30';
 $DB_USER = 'root';
 $DB_PASS = 'test';
@@ -14,7 +14,7 @@ function getDBConnection()
     global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME;
     $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
     if ($conn->connect_error) {
-        error_log("Database connection failed: " . $conn->connect_error);
+        error_log("database connection failed: " . $conn->connect_error);
         return false;
     }
     return $conn;
@@ -22,20 +22,20 @@ function getDBConnection()
 
 function register($username, $email, $password)
 {
-    echo "Attempting to register user: $username with email: $email\n";
+    echo "attempting to register user: $username with email: $email\n";
     
     $conn = getDBConnection();
     if (!$conn) {
-        echo "Database connection failed\n";
-        return array("success" => false, "message" => "Database connection failed");
+        echo "database connection failed\n";
+        return array("success" => false, "message" => "database connection failed");
     }
 
-    // Check if email already exists
+    // check if email already exists
     $stmt = $conn->prepare("SELECT id FROM Users WHERE email = ?");
     if (!$stmt) {
-        echo "Prepare statement failed\n";
+        echo "prepare statement failed\n";
         $conn->close();
-        return array("success" => false, "message" => "Database query error");
+        return array("success" => false, "message" => "database query error");
     }
 
     $stmt->bind_param("s", $email);
@@ -43,46 +43,46 @@ function register($username, $email, $password)
     $stmt->store_result();
 
     if ($stmt->num_rows > 0) {
-        echo "Email already exists: $email\n";
+        echo "email already exists: $email\n";
         $stmt->close();
         $conn->close();
-        return array("success" => false, "message" => "Email already exists");
+        return array("success" => false, "message" => "email already exists");
     }
     $stmt->close();
 
-    // Hash the password
+    // hash the password
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-    echo "Password hashed successfully\n";
+    echo "password hashed successfully\n";
 
-    // Insert new user
+    // insert new user
     $stmt = $conn->prepare("INSERT INTO Users (email, password) VALUES (?, ?)");
     if (!$stmt) {
-        echo "Insert prepare failed\n";
+        echo "insert prepare failed\n";
         $conn->close();
-        return array("success" => false, "message" => "Database prepare error");
+        return array("success" => false, "message" => "database prepare error");
     }
 
     $stmt->bind_param("ss", $email, $hashedPassword);
 
     if ($stmt->execute()) {
         $userId = $stmt->insert_id;
-        echo "User registered successfully with ID: $userId\n";
+        echo "user registered successfully with id: $userId\n";
         $stmt->close();
         $conn->close();
 
         return array(
             "success" => true,
-            "message" => "User registered successfully",
+            "message" => "user registered successfully",
             "user_id" => $userId,
             "username" => $username,
             "email" => $email
         );
     } else {
         $error = $stmt->error;
-        echo "Insert failed: $error\n";
+        echo "insert failed: $error\n";
         $stmt->close();
         $conn->close();
-        return array("success" => false, "message" => "Registration failed: " . $error);
+        return array("success" => false, "message" => "registration failed: " . $error);
     }
 }
 
@@ -90,13 +90,13 @@ function login($username, $password)
 {
     $conn = getDBConnection();
     if (!$conn) {
-        return array("success" => false, "message" => "Database connection failed");
+        return array("success" => false, "message" => "database connection failed");
     }
 
     $stmt = $conn->prepare("SELECT id, email, password FROM Users WHERE email = ?");
     if (!$stmt) {
         $conn->close();
-        return array("success" => false, "message" => "Database query error");
+        return array("success" => false, "message" => "database query error");
     }
 
     $stmt->bind_param("s", $username);
@@ -111,7 +111,7 @@ function login($username, $password)
             $conn->close();
             return array(
                 "success" => true,
-                "message" => "Login successful",
+                "message" => "login successful",
                 "user_id" => $row['id'],
                 "email" => $row['email']
             );
@@ -128,7 +128,7 @@ function request_processor($request)
     echo "received request: " . json_encode($request) . "\n";
     
     if (!isset($request['type'])) {
-        return array("success" => false, "message" => "Request type not specified");
+        return array("success" => false, "message" => "request type not specified");
     }
 
     switch ($request['type']) {
@@ -145,15 +145,15 @@ function request_processor($request)
             return login($request['username'], $request['password']);
             
         default:
-            return array("success" => false, "message" => "Unknown request type");
+            return array("success" => false, "message" => "unknown request type");
     }
 }
 
 // start
 $server = new rabbitMQServer("testRabbitMQ.ini", "testServer");
 
-echo "Database RabbitMQ Server Started\n";
+echo "database rabbitmq server started\n";
 $server->process_requests('request_processor');
-echo "Database RabbitMQ Server Stopped\n";
+echo "database rabbitmq server stopped\n";
 exit();
 ?>

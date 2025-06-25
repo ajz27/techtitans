@@ -38,10 +38,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     try {
-        // Create RabbitMQ client
+        // create rabbitmq client
         $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
 
-        // Prepare request for RabbitMQ
+        // prepare request for rabbitmq
         $request = array(
             'type' => 'register',
             'username' => $username,
@@ -49,15 +49,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'password' => $password
         );
 
-        // Send request to database server via RabbitMQ
+        // send request to database server via rabbitmq
         $response = $client->send_request($request);
 
-        // Convert to array format consistently to avoid stdClass errors
+        // convert to array format consistently to avoid stdclass errors
         $responseArray = json_decode(json_encode($response), true);
 
         if ($responseArray && isset($responseArray['success'])) {
             if ($responseArray['success']) {
-                // Registration successful
+                // registration successful
                 $_SESSION['user_id'] = $responseArray['user_id'];
                 $_SESSION['username'] = $username;
 
@@ -67,18 +67,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </script>";
                 exit();
             } else {
-                $error = isset($responseArray['message']) ? $responseArray['message'] : "Registration failed";
+                $error = isset($responseArray['message']) ? $responseArray['message'] : "registration failed";
                 header("Location: register.html?error=" . urlencode($error));
                 exit();
             }
         } else {
-            header("Location: register.html?error=Server communication error");
+            header("Location: register.html?error=server communication error");
             exit();
         }
 
     } catch (Exception $e) {
-        error_log("Registration error: " . $e->getMessage());
-        header("Location: register.html?error=System error occurred");
+        error_log("registration error: " . $e->getMessage());
+        header("Location: register.html?error=system error occurred");
         exit();
     }
 }
