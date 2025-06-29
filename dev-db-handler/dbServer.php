@@ -50,19 +50,39 @@ function register($username, $email, $password)
     }
     $stmt->close();
 
+    // check if username already exists
+    $stmt = $conn->prepare("SELECT id FROM Users WHERE username = ?");
+    if (!$stmt) {
+        echo "prepare statement failed\n";
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows > 0) {
+        echo "username already exists: $username\n";
+        $stmt->close();
+        $conn->close();
+        return array("success" => false, "message" => "username already exists");
+    }
+    $stmt->close();
+
     // hash the password
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
     echo "password hashed successfully\n";
 
     // insert new user
-    $stmt = $conn->prepare("INSERT INTO Users (email, password) VALUES (?, ?)");
+    $stmt = $conn->prepare("INSERT INTO Users (username, email, password) VALUES (?, ?, ?)");
     if (!$stmt) {
         echo "insert prepare failed\n";
         $conn->close();
         return array("success" => false, "message" => "database prepare error");
     }
 
-    $stmt->bind_param("ss", $email, $hashedPassword);
+    $stmt->bind_param("sss", $username, $email, $hashedPassword);
 
     if ($stmt->execute()) {
         $userId = $stmt->insert_id;
@@ -92,14 +112,14 @@ function login($username, $password)
     if (!$conn) {
         return array("success" => false, "message" => "database connection failed");
     }
-
-    $stmt = $conn->prepare("SELECT id, email, password FROM Users WHERE email = ?");
+    
+    $stmt = $conn->prepare("SELECT id, username, email, password FROM Users WHERE username = ? OR email = ?");
     if (!$stmt) {
         $conn->close();
         return array("success" => false, "message" => "database query error");
     }
 
-    $stmt->bind_param("s", $username);
+    $stmt->bind_param("ss", $username, $username);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -113,6 +133,7 @@ function login($username, $password)
                 "success" => true,
                 "message" => "login successful",
                 "user_id" => $row['id'],
+                "username" => $row['username'],
                 "email" => $row['email']
             );
         }

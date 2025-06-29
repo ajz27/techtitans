@@ -57,12 +57,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($responseArray && isset($responseArray['success'])) {
             if ($responseArray['success']) {
-                // registration successful
+                // registration successful - set session data
                 $_SESSION['user_id'] = $responseArray['user_id'];
-                $_SESSION['username'] = $username;
+                $_SESSION['username'] = $responseArray['username'];
+                $_SESSION['email'] = $responseArray['email'];
+                $_SESSION['logged_in'] = true;
 
                 echo "<script>
                   localStorage.setItem('loggedIn', 'true');
+                  localStorage.setItem('username', '" . addslashes($responseArray['username']) . "');
                   window.location.href = 'index.php';
                 </script>";
                 exit();

@@ -1,10 +1,9 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.html");
-    exit();
-}
-$username = htmlspecialchars($_SESSION['username']);
+require_once('session_check.inc');
+requireLogin();
+$user = getSessionUser();
+$username = htmlspecialchars($user['username']);
+$email = htmlspecialchars($user['email']);
 ?>
 
 <!DOCTYPE html>
@@ -58,8 +57,13 @@ $username = htmlspecialchars($_SESSION['username']);
 
 <!-- Profile Card -->
 <div class="profile-card">
-  <h3> Welcome, <?= $username ?>!</h3>
-  <p class="mt-3">This is your profile page. Use the navigation bar above to explore the portal.</p>
+  <h3>Welcome, <?= $username ?>!</h3>
+  <div class="mt-3">
+    <p><strong>Username:</strong> <?= $username ?></p>
+    <p><strong>Email:</strong> <?= $email ?></p>
+    <p><strong>User ID:</strong> <?= $user['user_id'] ?></p>
+  </div>
+  <p class="mt-3">Use the navigation bar above to explore the portal.</p>
 </div>
 
 </body>
