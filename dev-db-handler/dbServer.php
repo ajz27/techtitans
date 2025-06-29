@@ -3,8 +3,8 @@ require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 
-// database credentials
-$DB_HOST = '10.0.0.30';
+// database credentials, specific to adriel right now but change accordingly
+$DB_HOST = 'localhost';
 $DB_USER = 'root';
 $DB_PASS = 'test';
 $DB_NAME = 'userDatabase';
