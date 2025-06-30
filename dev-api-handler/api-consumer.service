@@ -1,0 +1,22 @@
+[Unit]
+Description=API Server Consumer
+After=network-online.target
+Wants=network-online.target
+Requires=network-online.target
+
+[Service]
+Type=simple
+User=ajz27
+Group=ajz27
+WorkingDirectory=/home/techtitans/dev-api-handler/
+ExecStart=/usr/bin/php /home/techtitans/dev-api-handler/apiServer.php
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
