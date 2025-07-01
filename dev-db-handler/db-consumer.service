@@ -1,0 +1,19 @@
+[Unit]
+Description=DB consumer service
+After=network-online.target
+Wants=network-online.target
+Requires=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=jg79
+WorkingDirectory=/home/jg79/techtitans/dev-db-handler/
+ExecStart=/usr/bin/php /home/jg79/techtitans/dev-db-handler/dbServer.php
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
