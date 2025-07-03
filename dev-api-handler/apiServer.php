@@ -16,10 +16,10 @@ function loadEnv($filePath) {
     }
 }
 
-// load .env from project root (go up one directory)
+// load .env from project root 
 loadEnv(__DIR__ . '/../.env');
 
-// get API key from environment
+// get API key from env
 define('VIRUSTOTAL_API_KEY', $_ENV['VIRUSTOTAL_API_KEY'] ?? '');
 define('VIRUSTOTAL_API_URL', 'https://www.virustotal.com/vtapi/v2/url/report');
 
