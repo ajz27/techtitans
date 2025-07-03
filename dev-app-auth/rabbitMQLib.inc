@@ -186,7 +186,7 @@ class rabbitMQClient
 	}
 	function send_request($message){
 		$uid = uniqid();
-		var_dump($json_message);
+		//var_dump($json_message);
 		$json_message = json_encode($message);
 		try{
 			$this->response_queue[$uid] = null;

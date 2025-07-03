@@ -4,10 +4,10 @@ require_once('getHostInfo.inc');
 require_once('rabbitMQLib.inc');
 
 // Database credentials
-$DB_HOST = '192.168.193.13';
-$DB_USER = 'jg69';
-$DB_PASS = 'Ilovemanpreet<3';
-$DB_NAME = 'userDatabase';
+$DB_HOST = '127.0.0.1';
+$DB_USER = 'root';
+$DB_PASS = 'root';
+$DB_NAME = 'auth_db';
 
 // Establish DB connection
 function getDBConnection()
