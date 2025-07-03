@@ -1,9 +1,28 @@
 <?php
+// quick 
 
+// load environment variables from project root
+function loadEnv($filePath) {
+    if (!file_exists($filePath)) {
+        die("env file not found: $filePath");
+    }
+    
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue; 
+        
+        list($name, $value) = explode('=', $line, 2);
+        $_ENV[trim($name)] = trim($value);
+    }
+}
 
-// api key and api url
-define('VIRUSTOTAL_API_KEY', 'b96af2c606a9552104bb0f6332cca3f6de166a8475280d3bebb4a5a793f4e041');
+// load .env from project root (go up one directory)
+loadEnv(__DIR__ . '/../.env');
+
+// get API key from environment
+define('VIRUSTOTAL_API_KEY', $_ENV['VIRUSTOTAL_API_KEY'] ?? '');
 define('VIRUSTOTAL_API_URL', 'https://www.virustotal.com/vtapi/v2/url/report');
+
 
 // test urls
 $testUrls = [

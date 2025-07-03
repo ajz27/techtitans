@@ -1,0 +1,171 @@
+IT 490 Project Proposal
+Instructions: You may use a Google doc for this to organize your thoughts, but ultimately your team will make a markdown file in your team’s repository that has a checklist of these features.
+As features are completed, you’ll mark the checkbox and add a reference to the issue that relates to the feature in that markdown file. The Google doc would be more of a worksheet.
+Important: Do not just blindly copy and paste this and change words; this is a rough guide to use as an example.
+Group Name: Tech Titans
+Group Members (names and github usernames):
+ Joseph Garilao (JosephGarilao)
+ Harsh Mistry (Harshm43)
+ Manpreet Hundal (hundalm)
+ Rahul Chawaria (rc623)
+Adriel Zachariah (ajz27)
+Ravi Patel (Ravi26387)
+Targeted API(s): https://rapidapi.com/dimas/api/VirusTotal 
+		     https://docs.virustotal.com/reference/overview
+Project Type: Web
+Project Summary/Goal: This project will allow users to check URLs, domains, and IP addresses to verify if they are secure or malicious. It will provide a risk score or threat analysis after comparing the given URLs and IP addresses to many antivirus engines using the VirusTotal API. Building a simple yet effective security solution that assists users in instantly identifying phishing links, malicious websites, or suspicious domains is the goal. 
+Features:
+Core Requirements (do not edit):
+Users will be able to register
+Users will be able to login
+Users will be able to update their profile
+Users will be able to logout (session will be destroyed appropriately)
+Passwords will not be stored in plaintext
+Users will have permissions/roles
+At the minimum there must be an Admin role that can modify system data through the web UI
+General users will not have roles; roles only add permission
+Project Requirements:
+Users will have different roles (expanded upon from Core)
+Admin - Can manage advanced tasks that aren’t for other roles 
+ Manage user accounts (create, edit, delete) and manage client and manager
+Monitor all the scan submitted by the users and remove duplicates 
+Manager - Manages the action on user-submitted scan results 
+Examine any warned domains, or URLs and determine whether to escalate or archive them.
+Produce reports based on VirusTotal scan data for internal use or user input.
+Investigate suspicious scan results and flag them for admin attention (repeated malicious detections). 
+Able to carry out every activity that a client is capable of
+Client - Can use the platform to scan and analyze threats
+Send in IP addresses, domains, or URLs for VirusTotal analysis.
+View the scan results with threat details (risk score, flagged engines, etc.)
+View the scan result history of previous scans  
+Receive basic threat analysis and safety recommendations
+Pulled from the API initially
+URL Check
+Uses the database to first cross reference to check if URL has had any previous malware/phishing reports. If not in database then it will run through the api
+Show any scan reports from other antivirus engines
+Result Details Page
+Shows Safety Status
+TimeStamp of last scan
+Risk score out of 100 (if possible)
+Data Source (VirusTotal)
+Option to Report false positives or missed threats
+Query History 
+Each time a user submits a URL, IP, etc for scanning, it will be logged in the database with the following info: Submission type (URL, IP, etc), Timestamp, Results (safe, malicious, suspicious).
+Admins/Manager can view analytics
+Users can view their scan history 
+Clearly define pages/actions for various CRUD operations, can break it down per role if needed
+Admin Role: (Inherits all manager and client abilities and more)
+1. User Management Page
+Purpose: Create, edit, or remove user accounts
+CRUD:
+Create: Add new user(s) (set role, email, password)
+Read: View user list profile
+Update: Change role, reset passwords, update info 
+Delete: Remove user from system (hard delete)
+User Actions:
+Promote/demote users to Manager or Admin
+Delete inactive users
+2. Scan Oversight Page
+Purpose: View all user scans and manage duplicate or errors
+CRUD:
+Create: N/A
+Read: List all scan history in the database
+Delete: Remove duplicates or wrong entries (Hard delete)
+User Actions: 
+Compare repeated submissions
+Clean up older scans that are no longer useful
+Manager Role: (Inherits all client abilities and more)
+1. Review Submitted Scan Page
+Purpose: View all scans submitted by users and take action. 
+CRUD:
+Read: View list all incoming scans 
+Update: Change status (Approved, Archived Flagged) 
+User Actions:
+Filter results (flagged only, scan types, submission status) shows 10 records at a time with the user able to change this value between 10 and 100
+Mark scan as approved or escalate to Admin
+Add internal notes to scans
+2. Reports Page
+Purpose: View all user scans and manage duplicate or errors
+CRUD:
+Read: List all scans in the database (filter: scan types (URL, IP, etc)) shows 10 records at a time with the user able to change this value between 10 and 100
+Delete: Remove duplicates or wrong entries (hard delete)
+User Actions: 
+Clean up older scans that are no longer useful
+3. Alerts Page
+Purpose: Identify suspicious patterns (repeating malicious results).
+CRUD: 
+Create: Flag a scan or user activity
+Read: Review previously flagged alerts
+User Actions:
+Mark specific scan entities as suspicious
+Notify Admin of concern
+Client Role:
+1. Submit Scan Page
+Purpose: Let users submit a URL, or IP address for scanning. 
+CRUD:
+Create: A new scan request is logged in the system (user ID, timestamp, and type of submission, submission data (url, ip, metadata)
+User Actions:
+Choose scan type (URL, or IP)
+Enter value 
+Click “scan” → Triggers VirusTotal API call
+Result get temporarily stored and linked to user
+2. View Scan Result Page
+Purpose: Show results from a specific scan (after a submission).
+CRUD:
+Read: Fetch scan result details from the local database or cache
+User Actions: 
+See:
+Safety classification (Safe, Malicious, Suspicious)
+Last scanned timestamp
+Risk score (if available)
+Antivirus detection list
+Able to view the scanned resource (url, ip, domain metadata)
+Option to report false positives or missed threat (Create report for manager)
+3. Scan History Page
+Purpose: Let users view all past scans they’ve submitted (within a certain undetermined time frame).
+CRUD: 
+Read: Display a list of all previous scan queries
+User Actions:
+Sort or filter results (by scan type or date) shows 10 records at a time with the user able to change this value between 10 and 100
+10 page limit
+Click any row to view detailed scan result
+Optional: Delete scan history entry (soft delete)
+4. Client Profile Page
+Purpose: Show/edit the user’s basic info and scan activity
+CRUD: 
+Read: Load user data and scan history
+Update: Edit name, email, bio, or password
+User Actions:
+Edit profile fields
+Name, bio, email
+See their role (Client)
+See summary of scan behavior (e.g., 10 scans this week)
+Scan history (list of 10 records, but can change to a value between 10 to 100)
+Link to detailed results
+Status “Safe, Malicious, Pending”
+API Hints:
+Should be able to fetch results for:
+URLs
+IP addresses 
+Domains 
+Be able to pass different queries to the API to from scan results 
+Any modifications or additions should be made to the local database.
+Not necessary to update stale data, such as entries that are still in your database but have been altered or removed on the API side.
+New scan results can be saved for the Manager Role to examine, accept, or mark for additional research.
+Should offer threat intelligence, such as:
+Classification of safety or risk score (e.g., safe, suspicious, malicious)
+Findings from antivirus engines
+Last analysis time and scan information
+should not utilize the API's User Authentication feature.
+Your system requires control of its own users.
+The API will only be used to retrieve analysis findings; it should not be utilized for user roles, session management, or login.
+Requirements (don’t edit):
+All App data requests will go through MQ
+The App will not directly connect to DB Server or API Server
+DB will mostly act as your cache for API requests where applicable
+API data may be polled periodically via scheduled tasks
+All VMs should have their logs sent to a central location so you don’t need to login to each specific VM
+[Midterm] The core of your project should be working. All of the features from the previous list should be implemented.
+[Final] Your project will have a multi-lane deployment system developed (DEV/QA/Prod) you will write custom scripts to migrate your changes (code and data as applicable) from the previous lane to the next. Your scripts should handle scenarios where you may need to rollback changes.
+[Final] Demonstrate zero-downtime deployment strategy (i.e., clusters of VMs)
+Demonstrate monitoring of your VMs (Resources/Security) and handling such issues

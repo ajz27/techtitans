@@ -1,0 +1,9 @@
+# Environment variables
+.env
+
+*.log
+/vendor/
+/node_modules/
+.DS_Store
+Thumbs.db
+test_results.json
