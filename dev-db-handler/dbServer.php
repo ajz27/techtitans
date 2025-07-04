@@ -23,7 +23,7 @@ function getDBConnection()
 function register($username, $email, $password)
 {
     echo "attempting to register user: $username with email: $email\n";
-    
+
     $conn = getDBConnection();
     if (!$conn) {
         echo "database connection failed\n";
@@ -112,7 +112,7 @@ function login($username, $password)
     if (!$conn) {
         return array("success" => false, "message" => "database connection failed");
     }
-    
+
     $stmt = $conn->prepare("SELECT id, username, email, password FROM Users WHERE username = ? OR email = ?");
     if (!$stmt) {
         $conn->close();
@@ -125,7 +125,7 @@ function login($username, $password)
 
     if ($result->num_rows === 1) {
         $row = $result->fetch_assoc();
-        
+
         if (password_verify($password, $row['password'])) {
             $stmt->close();
             $conn->close();
@@ -147,7 +147,7 @@ function login($username, $password)
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
-    
+
     if (!isset($request['type'])) {
         return array("success" => false, "message" => "request type not specified");
     }
@@ -158,16 +158,86 @@ function request_processor($request)
                 return array("success" => false, "message" => "missing required fields");
             }
             return register($request['username'], $request['email'], $request['password']);
-            
+
         case 'login':
             if (!isset($request['username']) || !isset($request['password'])) {
                 return array("success" => false, "message" => "missing username or password");
             }
             return login($request['username'], $request['password']);
-            
-        default:
-            return array("success" => false, "message" => "unknown request type");
+
+        // --- NEW SCAN HANDLERS ---
+        case 'submit_scan':
+            if (!isset($request['user_id']) || !isset($request['scan_type']) || !isset($request['input_value'])) {
+                return array("success" => false, "message" => "missing user_id, scan_type, or input_value");
+            }
+            return [
+                "success" => true,
+                "scan_id" => submitScan($request['user_id'], $request['scan_type'], $request['input_value'])
+            ];
+
+        case 'view_scan_result':
+            if (!isset($request['scan_id'])) {
+                return array("success" => false, "message" => "missing scan_id");
+            }
+            return [
+                "success" => true,
+                "result" => viewScanResult($request['scan_id'])
+            ];
+
+
+        case 'get_scan_history':
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $limit = $request['limit'] ?? 10;
+            $offset = $request['offset'] ?? 0;
+            return [
+                "success" => true,
+                "history" => getScanHistory($request['user_id'], $limit, $offset)
+            ];
+
+
+        case 'manager_review_scans':
+            $limit = $request['limit'] ?? 10;
+            $offset = $request['offset'] ?? 0;
+            return [
+                "success" => true,
+                "scans" => getClientScansForReview($limit, $offset)
+            ];
+
+
+        case 'flag_scan':
+            if (!isset($request['scan_id']) || !isset($request['user_id']) || !isset($request['reason'])) {
+                return array("success" => false, "message" => "missing scan_id, user_id, or reason");
+            }
+            $result = flagScan($request['scan_id'], $request['user_id'], $request['reason']);
+            return ['success' => $result];
+
+        case 'get_flagged_scans':
+            return [
+                "success" => true,
+                "flags" => getFlaggedScans()
+            ];
+
+
+        case 'admin_get_all_scans':
+            $limit = $request['limit'] ?? 10;
+            $offset = $request['offset'] ?? 0;
+            return [
+                "success" => true,
+                "scans" => getAllScans($limit, $offset)
+            ];
+
+        case 'admin_check_duplicates':
+            if (!isset($request['input_value'])) {
+                return array("success" => false, "message" => "missing input_value");
+            }
+            return [
+                "success" => true,
+                "duplicates" => findDuplicateSubmissions($request['input_value'])
+            ];
     }
+
 }
 
 // start
