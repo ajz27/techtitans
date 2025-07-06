@@ -1,17 +1,18 @@
 <?php
+require_once('rabbitMQLib.inc');
 
-
-// api key and api url
+// API key and API URL for VirusTotal
 define('VIRUSTOTAL_API_KEY', 'b96af2c606a9552104bb0f6332cca3f6de166a8475280d3bebb4a5a793f4e041');
 define('VIRUSTOTAL_API_URL', 'https://www.virustotal.com/vtapi/v2/url/report');
 
-// test urls
-$testUrls = [
-    'https://www.google.com',
-    'https://www.github.com'
-];
-
-function checkUrl($url, $apiKey) {
+/**
+ * Scan a URL with VirusTotal API
+ * 
+ * @param string $url URL to scan
+ * @param string $apiKey VirusTotal API key
+ * @return array|object The scan results
+ */
+function scanUrl($url, $apiKey) {
     $postData = http_build_query(['apikey' => $apiKey, 'resource' => $url]);
     
     $curl = curl_init();
@@ -28,36 +29,55 @@ function checkUrl($url, $apiKey) {
     curl_close($curl);
     
     if ($httpCode !== 200) {
-        return ['url' => $url, 'error' => "HTTP $httpCode"];
+        return (object)['error' => "HTTP Error: $httpCode"];
     }
     
-    $data = json_decode($response, true);
-    return [
-        'url' => $url,
-        'detections' => $data['positives'] ?? 0,
-        'total_scans' => $data['total'] ?? 0,
-        'status' => ($data['positives'] ?? 0) == 0 ? 'Clean' : 'Flagged'
-    ];
+    // Return the full JSON response as an object to send back to the client
+    return json_decode($response);
 }
 
-echo "running test\n";
-
-$results = [];
-foreach ($testUrls as $url) {
-    echo "Testing: $url\n";
-    $result = checkUrl($url, VIRUSTOTAL_API_KEY);
-    $results[] = $result;
+/**
+ * Process request from RabbitMQ
+ * 
+ * @param array $request Request data
+ * @return array|object Response data
+ */
+function requestProcessor($request) {
+    echo "Received request...\n";
     
-    if (isset($result['error'])) {
-        echo "  error: {$result['error']}\n";
-    } else {
-        echo "  status: {$result['status']} ({$result['detections']}/{$result['total_scans']})\n";
+    // Log request data for debugging
+    var_dump($request);
+    
+    // Handle different request types
+    switch ($request['type'] ?? '') {
+        case 'virus_scan':
+            // Handle URL scan request
+            if (!isset($request['url'])) {
+                return (object)['error' => 'No URL provided'];
+            }
+            
+            $url = $request['url'];
+            echo "Scanning URL: $url\n";
+            
+            // Call VirusTotal API
+            $result = scanUrl($url, VIRUSTOTAL_API_KEY);
+            
+            // Return the result
+            return $result;
+            
+        default:
+            return (object)['error' => 'Unknown request type'];
     }
-    
-    sleep(15); // for rate limiting
 }
 
-// saves the results in a json file
-file_put_contents('test_results.json', json_encode($results, JSON_PRETTY_PRINT));
+// Create RabbitMQ server instance
+// Use a separate queue for API requests
+$server = new rabbitMQServer("testRabbitMQ.ini", "apiRequest");
 
+echo "API Server started. Waiting for requests...\n";
+
+// Start processing requests
+$server->process_requests('requestProcessor');
+
+echo "API Server stopped.\n";
 ?>
