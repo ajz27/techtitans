@@ -7,9 +7,14 @@ $client = new RabbitMQClient('testRabbitMQ.ini', 'testServer');
 if(isset($argv[1])){
 	$msg = $argv[1];
 }
-else{
-	$msg = array("message"=>"test message", "type"=>"echo");
+else {
+    $msg = array(
+        "type" => "login",
+        "email" => "mistreyt38@mail.com",
+        "password" => "mistry321"
+    );
 }
+
 
 $response = $client->send_request($msg);
 

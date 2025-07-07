@@ -1,38 +1,141 @@
+<<<<<<< HEAD
 <?php
+// Show all errors for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
-include 'db.php';
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
 
-    // Prepare and execute query
-    $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ? OR email = ?");
-    $stmt->bind_param("ss", $username, $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // Basic validation
+    if (empty($username) || empty($password)) {
+        header("Location: login.html?error=All fields are required");
+        exit();
+    }
 
-    if ($result->num_rows === 1) {
-        $row = $result->fetch_assoc();
+    try {
+        // create rabbitmq client
+        $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
 
-        if (password_verify($password, $row['password'])) {
-            // Login successful
-            $_SESSION['user_id'] = $row['id'];
-            $_SESSION['username'] = $row['username'];
+        // prepare request for rabbitmq
+        $request = array(
+            'type' => 'login',
+            'username' => $username,
+            'password' => $password
+        );
 
-            // Set localStorage via JavaScript and redirect
-            echo "<script>
-                localStorage.setItem('loggedIn', 'true');
-                window.location.href = 'index.php';
-            </script>";
-            exit;
+        // send request to database server via rabbitmq
+        $response = $client->send_request($request);
+
+        // convert to array format consistently to avoid stdclass errors
+        $responseArray = json_decode(json_encode($response), true);
+
+        if ($responseArray && isset($responseArray['success'])) {
+            if ($responseArray['success']) {
+                // login successful - set session data
+                $_SESSION['user_id'] = $responseArray['user_id'];
+                $_SESSION['username'] = $responseArray['username'];
+                $_SESSION['email'] = $responseArray['email'];
+                $_SESSION['logged_in'] = true;
+
+                echo "<script>
+                  localStorage.setItem('loggedIn', 'true');
+                  localStorage.setItem('username', '" . addslashes($responseArray['username']) . "');
+                  window.location.href = 'index.php';
+                </script>";
+                exit();
+            } else {
+                $error = isset($responseArray['message']) ? $responseArray['message'] : "login failed";
+                header("Location: login.html?error=" . urlencode($error));
+                exit();
+            }
         } else {
-            header("Location: login.html?error=Invalid password");
-            exit;
+            header("Location: login.html?error=server communication error");
+            exit();
         }
-    } else {
-        header("Location: login.html?error=User not found");
-        exit;
+
+    } catch (Exception $e) {
+        error_log("login error: " . $e->getMessage());
+        header("Location: login.html?error=system error occurred");
+        exit();
     }
 }
 ?>
+=======
+<?php
+// Show all errors for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+session_start();
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
+
+    // Basic validation
+    if (empty($username) || empty($password)) {
+        header("Location: login.html?error=All fields are required");
+        exit();
+    }
+
+    try {
+        // create rabbitmq client
+        $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+
+        // prepare request for rabbitmq
+        $request = array(
+            'type' => 'login',
+            'username' => $username,
+            'password' => $password
+        );
+
+        // send request to database server via rabbitmq
+        $response = $client->send_request($request);
+
+        // convert to array format consistently to avoid stdclass errors
+        $responseArray = json_decode(json_encode($response), true);
+
+        if ($responseArray && isset($responseArray['success'])) {
+            if ($responseArray['success']) {
+                // login successful - set session data
+                $_SESSION['user_id'] = $responseArray['user_id'];
+                $_SESSION['username'] = $responseArray['username'];
+                $_SESSION['email'] = $responseArray['email'];
+                $_SESSION['logged_in'] = true;
+
+                echo "<script>
+                  localStorage.setItem('loggedIn', 'true');
+                  localStorage.setItem('username', '" . addslashes($responseArray['username']) . "');
+                  window.location.href = 'index.php';
+                </script>";
+                exit();
+            } else {
+                $error = isset($responseArray['message']) ? $responseArray['message'] : "login failed";
+                header("Location: login.html?error=" . urlencode($error));
+                exit();
+            }
+        } else {
+            header("Location: login.html?error=server communication error");
+            exit();
+        }
+
+    } catch (Exception $e) {
+        error_log("login error: " . $e->getMessage());
+        header("Location: login.html?error=system error occurred");
+        exit();
+    }
+}
+?>
+>>>>>>> eab7048 (Added new files)

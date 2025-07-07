@@ -1,7 +1,6 @@
 <?php
-session_start();
-session_unset();
-session_destroy();
+require_once('session_check.inc');
+destroySession();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -13,6 +12,7 @@ session_destroy();
     // Clear frontend auth state and redirect immediately
     window.onload = function () {
       localStorage.removeItem('loggedIn');
+      localStorage.removeItem('username');
       window.location.href = 'login.html';
     };
   </script>
