@@ -14,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
     
     if (filter_var($url, FILTER_VALIDATE_URL)) {
         // Create a RabbitMQ client for API requests (use a different queue than DB)
-        $client = new rabbitMQClient("testRabbitMQ.ini", "apiRequest");
+        $client = new rabbitMQClient("apiRabbitMQ.ini", "apiRequest");
         
         // Create request message
         $request = array();

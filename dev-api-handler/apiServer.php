@@ -45,12 +45,12 @@ function scanUrl($url, $apiKey) {
 function requestProcessor($request) {
     echo "Received request...\n";
     
-    // Log request data for debugging
+    // Log request data for debuggingw
     var_dump($request);
     
     // Handle different request types
     switch ($request['type'] ?? '') {
-        case 'virus_scan':
+        case "virus_scan":
             // Handle URL scan request
             if (!isset($request['url'])) {
                 return (object)['error' => 'No URL provided'];
@@ -66,13 +66,13 @@ function requestProcessor($request) {
             return $result;
             
         default:
-            return (object)['error' => 'Unknown request type'];
+            return (object)['error' => 'Unknown request type: ' . ($request['type'] ?? 'undefined')];
     }
 }
 
 // Create RabbitMQ server instance
-// Use a separate queue for API requests
-$server = new rabbitMQServer("testRabbitMQ.ini", "apiRequest");
+// Use the "apiRequest" section from the testRabbitMQ.ini file
+$server = new rabbitMQServer("apiRabbitMQ.ini", "apiRequest");
 
 echo "API Server started. Waiting for requests...\n";
 
