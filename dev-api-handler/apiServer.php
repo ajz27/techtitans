@@ -1,16 +1,16 @@
 <?php
 require_once('rabbitMQLib.inc');
 
-// API key and API URL for VirusTotal
+
 define('VIRUSTOTAL_API_KEY', 'b96af2c606a9552104bb0f6332cca3f6de166a8475280d3bebb4a5a793f4e041');
 define('VIRUSTOTAL_API_URL', 'https://www.virustotal.com/vtapi/v2/url/report');
 
 /**
  * Scan a URL with VirusTotal API
  * 
- * @param string $url URL to scan
- * @param string $apiKey VirusTotal API key
- * @return array|object The scan results
+ * @param string 
+ * @param string 
+ * @return array|object 
  */
 function scanUrl($url, $apiKey) {
     $postData = http_build_query(['apikey' => $apiKey, 'resource' => $url]);
@@ -32,15 +32,15 @@ function scanUrl($url, $apiKey) {
         return (object)['error' => "HTTP Error: $httpCode"];
     }
     
-    // Return the full JSON response as an object to send back to the client
+    
     return json_decode($response);
 }
 
 /**
- * Process request from RabbitMQ
  * 
- * @param array $request Request data
- * @return array|object Response data
+ * 
+ * @param array 
+ * @return array|object 
  */
 function requestProcessor($request) {
     echo "Received request...\n";
@@ -48,7 +48,7 @@ function requestProcessor($request) {
     // Log request data for debuggingw
     var_dump($request);
     
-    // Handle different request types
+    
     switch ($request['type'] ?? '') {
         case "virus_scan":
             // Handle URL scan request
@@ -59,7 +59,7 @@ function requestProcessor($request) {
             $url = $request['url'];
             echo "Scanning URL: $url\n";
             
-            // Call VirusTotal API
+            
             $result = scanUrl($url, VIRUSTOTAL_API_KEY);
             
             // Return the result
@@ -70,13 +70,12 @@ function requestProcessor($request) {
     }
 }
 
-// Create RabbitMQ server instance
-// Use the "apiRequest" section from the testRabbitMQ.ini file
+
 $server = new rabbitMQServer("apiRabbitMQ.ini", "apiRequest");
 
 echo "API Server started. Waiting for requests...\n";
 
-// Start processing requests
+
 $server->process_requests('requestProcessor');
 
 echo "API Server stopped.\n";

@@ -3,17 +3,17 @@ session_start();
 require_once('session_check.inc');
 require_once('rabbitMQLib.inc');
 
-// Initialize variables
+
 $url = "";
 $scanResult = null;
 $error = "";
 
-// Process form submission
+
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
     $url = filter_var($_POST['url'], FILTER_SANITIZE_URL);
     
     if (filter_var($url, FILTER_VALIDATE_URL)) {
-        // Create a RabbitMQ client for API requests (use a different queue than DB)
+        
         $client = new rabbitMQClient("apiRabbitMQ.ini", "apiRequest");
         
         // Create request message
