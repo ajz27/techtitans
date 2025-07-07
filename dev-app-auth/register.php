@@ -5,7 +5,14 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
+<<<<<<< HEAD
 include 'db.php';
+=======
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
+require_once('db.php');
+>>>>>>> 4935d601b39611b6f8e46987eae07284e6ca35e7
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);

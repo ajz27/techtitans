@@ -1,7 +1,8 @@
 <?php
 require_once('path.inc');
-require_once('getHostInfo.inc');
+require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
+require_once('db.php');
 
 // Database credentials
 $DB_HOST = '127.0.0.1';
@@ -28,7 +29,7 @@ function insertUser($email, $password, $username = null)
 
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-    $stmt = $conn->prepare("INSERT INTO Users (email, password, username) VALUES (?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO users (email, password, username) VALUES (?, ?, ?)");
     if (!$stmt) {
         return "Prepare failed: " . $conn->error;
     }
@@ -77,24 +78,35 @@ function register($username, $password, $email)
 }
 
 // LOGIN: validate password and set session hash
-function checkLogin($username, $password, $hash)
+function doLogin($email, $password)
 {
     $conn = getDBConnection();
-    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
 
-    $stmt = $conn->prepare("SELECT password FROM Users WHERE username = ?");
-    $stmt->bind_param("s", $username);
+    $stmt = $conn->prepare("SELECT id, username, email, password FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
     $stmt->execute();
-    $stmt->bind_result($hashedPasswordFromDB);
-    $stmt->fetch();
-    $stmt->close();
+    $stmt->store_result();
 
-    if ($hashedPasswordFromDB && password_verify($password, $hashedPasswordFromDB)) {
-        return setHash($username, $hash);
+    if ($stmt->num_rows == 1) {
+        $stmt->bind_result($userId, $username, $userEmail, $hashedPassword);
+        $stmt->fetch();
+
+        if (password_verify($password, $hashedPassword)) {
+            return [
+                'success' => 1,
+                'user_id' => $userId,
+                'username' => $username,
+                'email' => $userEmail
+            ];
+        } else {
+            return "Invalid password";
+        }
     } else {
-        return "Login FAILED";
+        return "Email not found";
     }
 }
+
+
 
 // Set session key (hash) for user
 function setHash($username, $hash)
