@@ -52,6 +52,7 @@ $username = htmlspecialchars($user['username']);
         <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
         <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
         <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
+
       </ul>
     </div>
   </div>

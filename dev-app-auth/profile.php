@@ -57,12 +57,7 @@ $email = htmlspecialchars($user['email']);
 
 <!-- Profile Card -->
 <div class="profile-card">
-  <h3>Welcome, <?= $username ?>!</h3>
-  <div class="mt-3">
-    <p><strong>Username:</strong> <?= $username ?></p>
-    <p><strong>Email:</strong> <?= $email ?></p>
-    <p><strong>User ID:</strong> <?= $user['user_id'] ?></p>
-  </div>
+  <h3>Welcome to Your profile</h3>
   <p class="mt-3">Use the navigation bar above to explore the portal.</p>
 </div>
 
