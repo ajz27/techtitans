@@ -1,6 +1,7 @@
 <?php
-
+// Start output buffering immediately
 ob_start();
+
 session_start();
 require_once('session_check.inc');
 require_once('rabbitMQLib.inc');
@@ -16,6 +17,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
     
     if (filter_var($url, FILTER_VALIDATE_URL)) {
         
+        // Capture and discard ALL output during RabbitMQ operations
+        ob_start();
+        
         $client = new rabbitMQClient("apiRabbitMQ.ini", "apiRequest");
         
         // Create request message
@@ -25,6 +29,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
         
         // Send request to API server
         $response = $client->send_request($request);
+        
+        // Discard everything that was output during RabbitMQ
+        ob_end_clean();
         
         if ($response) {
             $scanResult = $response;
@@ -36,7 +43,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
     }
 }
 
+// Clean the initial buffer and start fresh for HTML output
 ob_end_clean();
+ob_start();
 ?>
 
 <!DOCTYPE html>
@@ -254,3 +263,7 @@ ob_end_clean();
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
+<?php
+ob_end_flush();
+?>
