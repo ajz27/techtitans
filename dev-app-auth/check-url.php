@@ -1,4 +1,6 @@
 <?php
+
+ob_start();
 session_start();
 require_once('session_check.inc');
 require_once('rabbitMQLib.inc');
@@ -33,6 +35,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
         $error = "Please enter a valid URL";
     }
 }
+
+ob_end_clean();
 ?>
 
 <!DOCTYPE html>
