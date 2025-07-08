@@ -40,23 +40,12 @@ class rabbitMQServer
                     $this->USER, $this->PASSWORD);
     }
     function process_message($req){
-        // echo "processing message \n";  // REMOVED DEBUG
-        // send the ack to clear the item from the queue
-        /*if ($msg->delivery_info['routing_key'] !== "*"){
-            echo "routing_key: " . $msg->delivery_info['routing_key'];
-
-            return;
-        }*/
+        echo "processing message \n";
         $deliveryTag = $req->get('delivery_tag');
-        //$this->conn_queue->basic_ack($deliveryTag);
         try{
-
             if ($req->get('reply_to')){
-                // message wants a response
-                // process request
                 $body = $req->body;
                 $payload = json_decode($body, true);
-                //$payload['message'] = "Echo " . $payload['message'];
                 $response;
                 if (isset($this->callback)){
                     $response = call_user_func($this->callback,$payload);
@@ -67,7 +56,7 @@ class rabbitMQServer
                     (string)json_encode($response),
                     array('correlation_id'=>$req->get('correlation_id'))
                 );
-                // echo "Replying to " . $req->get('reply_to') . "\n";  // REMOVED DEBUG
+                echo "Replying to " . $req->get('reply_to') . "\n";
                 $req->delivery_info['channel']->basic_publish(
                     $msg,
                     '',
@@ -78,31 +67,28 @@ class rabbitMQServer
         }
         catch(Exception $e)
         {
-            // ampq throws exception if get fails...
             echo "error: rabbitMQServer: process_message: exception caught: ".$e;
         }
-        // message does not require a response, send ack immediately
         $body = $msg->body;
         $payload = json_decode($body);
         if (isset($this->callback)){
             call_user_func($this->callback,$payload);
         }
-        // echo "processed one-way message\n";  // REMOVED DEBUG
+        echo "processed one-way message\n";
     }
     function process_requests($callback){
         try{
-            // echo "processing request\n";  // REMOVED DEBUG
+            echo "processing request\n";
             $this->callback = $callback;
             $conn = $this->get_connection();
             $channel = $conn->channel();
             $this->conn_queue = $channel;
             $channel->queue_declare($this->queue, false, false, false, true);
-            // echo "Consuming queue\n";  // REMOVED DEBUG
+            echo "Consuming queue\n";
             $channel->basic_qos(null, 1, null);
             $channel->basic_consume($this->queue, '',
             false, true, false, false, array($this, 'process_message'));
 
-            // Loop as long as the channel has callbacks registered
             while (count($this->conn_queue->callbacks) && $this->conn_queue->is_consuming())
             {
                 $this->conn_queue->wait();
@@ -155,14 +141,14 @@ class rabbitMQClient
     function process_response($response){
         $uid = $response->get('correlation_id');
         if (!isset($this->response_queue[$uid])){
-          // echo  "unknown uid\n";  // REMOVED DEBUG
+          echo  "unknown uid\n";
           return true;
         }
         $this->channel->basic_ack($response->get('delivery_tag'));
 
         $body = $response->body;
         $payload = json_decode($body);
-        // var_dump($payload);  // REMOVED DEBUG - THIS WAS THE MAIN ISSUE
+        // var_dump($payload); - REMOVED THIS VAR_DUMP
         if (!isset($payload)){
             $payload = "[empty or invalid response]";
         }
@@ -174,32 +160,22 @@ class rabbitMQClient
         $this->channel = $conn->channel();
         $this->callback_queue = $this->queue . '.response';
         $this->channel->queue_declare($this->callback_queue, false, false, true, false);
-        /*list($this->callback_queue, ,) = $this->channel->queue_declare(
-                "",
-                false,
-                false,
-                true,
-                false
-            );*/
         $this->channel->basic_consume($this->callback_queue, '', false, true, false, false,
         array($this, 'process_response'));
     }
     function send_request($message){
         $uid = uniqid();
-        // var_dump($json_message);  // REMOVED DEBUG
         $json_message = json_encode($message);
         try{
             $this->response_queue[$uid] = null;
             $this->correlation_id = $uid;
-            //create message and properties
-
             $msg = new AMQPMessage($json_message, array(
                 'correlation_id'=> $this->correlation_id,
                 'content_type'=>'application/json',
                 'reply_to' => $this->callback_queue)
             );
 
-            // echo "sending message\n";  // REMOVED DEBUG
+            echo "sending message\n";
             
             $this->channel->basic_publish($msg, '', $this->queue);
             $this->response_queue[$uid] = "waiting";
@@ -215,22 +191,14 @@ class rabbitMQClient
             die("failed to send message to exchange: ". $e->getMessage()."\n");
         }
     }
-    /**
-      @brief send a one-way message to the server.  These are
-      auto-acknowledged and give no response.
-      @param message the body of the request.  This must make sense to the
-      server
-     */
     function publish($message)
-    {//TODO update
+    {
         $json_message = json_encode($message);
         try
         {
             $conn = $this->get_connection();
             $channel = $channel->channel();
             $channel->exchange_declare($this->exchange, AMQPExchangeType::DIRECT, false, false, true);
-
-
 
             $conn->connect();
             $channel = new AMQPChannel($conn);
