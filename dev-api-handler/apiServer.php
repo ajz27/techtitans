@@ -46,7 +46,7 @@ function requestProcessor($request) {
     echo "Received request...\n";
     
     // Log request data for debuggingw
-    var_dump($request);
+    // var_dump($request);
     
     
     switch ($request['type'] ?? '') {
