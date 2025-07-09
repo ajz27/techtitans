@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 require_once('session_check.inc');
 require_once('rabbitMQLib.inc');
@@ -14,6 +15,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
     
     if (filter_var($url, FILTER_VALIDATE_URL)) {
         
+        
+        
         $client = new rabbitMQClient("apiRabbitMQ.ini", "apiRequest");
         
         // Create request message
@@ -24,6 +27,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
         // Send request to API server
         $response = $client->send_request($request);
         
+        
+        
         if ($response) {
             $scanResult = $response;
         } else {
@@ -33,6 +38,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
         $error = "Please enter a valid URL";
     }
 }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -250,3 +257,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
+<?php
+ob_end_flush();
+?>

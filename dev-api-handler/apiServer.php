@@ -43,10 +43,10 @@ function scanUrl($url, $apiKey) {
  * @return array|object 
  */
 function requestProcessor($request) {
-    echo "Received request...\n";
+    // echo "Received request...\n";
     
     // Log request data for debuggingw
-    var_dump($request);
+    // var_dump($request);
     
     
     switch ($request['type'] ?? '') {
@@ -57,7 +57,7 @@ function requestProcessor($request) {
             }
             
             $url = $request['url'];
-            echo "Scanning URL: $url\n";
+            // echo "Scanning URL: $url\n";
             
             
             $result = scanUrl($url, VIRUSTOTAL_API_KEY);
