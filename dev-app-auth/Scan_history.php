@@ -3,7 +3,7 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 require_once('path.inc');
-require_once('getHostInfo.inc');
+require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 error_reporting(E_ALL);
 session_start();
