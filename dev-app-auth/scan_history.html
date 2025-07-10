@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-<htm>
-    <meta charset="UTF-8"
+<html>
+    <meta charset="UTF-8">
     <title>Scan History</title>
+
     <style>
+        body {
+            background: #b3d9ff; 
+            font-family: 'Segoe UI', sans-serif;
+            margin: 20px;
+        }
+
         .scan-history-button {
             padding : 10px 20px;
             font-size: 16px;
@@ -31,12 +38,31 @@
         margin-top: 20px;
         font-family: Arial, sans-serif;
         background-color: white;
+        border-radius: 12px;
+        overflow: hidden;
         }
 
         th, td {
             padding: 10px;
             border: 1px solid black; /* Clear black borders */
             text-align: left;
+        }
+
+        th {
+            background-color: #004080;
+            color: white;
+        }
+
+        .low-risk {
+            background-color: #d4edda; /* green */
+        }
+
+        .medium-risk {
+            background-color: #fff3cd; /* yellow */
+        }
+
+        .high-risk {
+            background-color: #f8d7da; /* red */
         }
     </style>
     <script>
@@ -46,7 +72,6 @@
     </script>
 
 <body>
-
     <h1>Scan History Viewer</h1>
 
     <button class="scan-history-button" onclick="loadScanHistory()">Scan History</button>
@@ -69,16 +94,20 @@
     </thead>
     <tbody>
         <?php foreach ($scans as $scan): ?>
-            <tr>
-                <td><?php echo htmlspecialchars($scan['id']); ?></td>
-                <td><?php echo htmlspecialchars($scan['user_id']); ?></td>
-                <td><?php echo htmlspecialchars($scan['scan_type']); ?></td>
-                <td><?php echo htmlspecialchars($scan['input_value']); ?></td>
-                <td><?php echo htmlspecialchars($scan['status']); ?></td>
-                <td><?php echo htmlspecialchars($scan['risk_score']); ?></td>
-                <td><?php echo htmlspecialchars($scan['submitted_at']); ?></td>
-                <td><?php echo htmlspecialchars($scan['last_scanned_at']); ?></td>
-                <td><?php echo $scan['is_deleted'] ? 'Yes' : 'No'; ?></td>
+            <?php
+                $score = floatval($scan['risk_score']);
+                $riskClass = $score < 3 ? 'low-risk' : ($score < 6 ? 'medium-risk' : 'high-risk');
+            ?>
+            <tr class="<?= $riskClass ?>">
+                <td><?= htmlspecialchars($scan['id']) ?></td>
+                <td><?= htmlspecialchars($scan['user_id']) ?></td>
+                <td><?= htmlspecialchars($scan['scan_type']) ?></td>
+                <td><?= htmlspecialchars($scan['input_value']) ?></td>
+                <td><?= htmlspecialchars($scan['status']) ?></td>
+                <td><?= htmlspecialchars($scan['risk_score']) ?></td>
+                <td><?= htmlspecialchars($scan['submitted_at']) ?></td>
+                <td><?= htmlspecialchars($scan['last_scanned_at']) ?></td>
+                <td><?= $scan['is_deleted'] ? 'Yes' : 'No' ?></td>
             </tr>
         <?php endforeach; ?>
     </tbody>
