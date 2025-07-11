@@ -128,4 +128,114 @@ function logout($sessionKey)
 
     return $result ? "loggedOut" : "error";
 }
+
+// === Submit Scan ===
+function submitScan($userId, $scanType, $inputValue) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $stmt = $conn->prepare("INSERT INTO scans (user_id, scan_type, input_value, status, submitted_at, is_deleted) VALUES (?, ?, ?, 'pending', NOW(), FALSE)");
+    $stmt->bind_param("iss", $userId, $scanType, $inputValue);
+    $stmt->execute();
+    $scanId = $stmt->insert_id;
+    $stmt->close();
+    $conn->close();
+    return $scanId;
+}
+
+// === View Scan Result ===
+function viewScanResult($scanId) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $stmt = $conn->prepare("SELECT * FROM scans WHERE id = ? AND is_deleted = FALSE");
+    $stmt->bind_param("i", $scanId);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $conn->close();
+    return $result;
+}
+
+// === Scan History ===
+function getScanHistory($userId, $limit = 10, $offset = 0) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $stmt = $conn->prepare("SELECT * FROM scans WHERE user_id = ? AND is_deleted = FALSE ORDER BY submitted_at DESC LIMIT ? OFFSET ?");
+    $stmt->bind_param("iii", $userId, $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    return $result;
+}
+
+// === Manager Review Scans ===
+function getClientScansForReview($limit = 10, $offset = 0) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $stmt = $conn->prepare("SELECT s.*, u.username FROM scans s JOIN users u ON s.user_id = u.id WHERE s.is_deleted = FALSE ORDER BY s.submitted_at DESC LIMIT ? OFFSET ?");
+    $stmt->bind_param("ii", $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    return $result;
+}
+
+function flagScan($scanId, $userId, $reason) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $stmt = $conn->prepare("INSERT INTO scan_flags (scan_id, flagged_by, reason, status, created) VALUES (?, ?, ?, 'under_review', NOW())");
+    $stmt->bind_param("iis", $scanId, $userId, $reason);
+    $result = $stmt->execute();
+    $stmt->close();
+    $conn->close();
+    return $result;
+}
+
+// === Manager Alerts Page ===
+function getFlaggedScans() {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $query = "SELECT sf.*, s.input_value, s.scan_type, u.username FROM scan_flags sf
+              JOIN scans s ON sf.scan_id = s.id
+              JOIN users u ON sf.flagged_by = u.id
+              WHERE sf.status = 'under_review'
+              ORDER BY sf.created DESC";
+    $result = $conn->query($query)->fetch_all(MYSQLI_ASSOC);
+    $conn->close();
+    return $result;
+}
+
+// === Admin Oversight Page ===
+function getAllScans($limit = 10, $offset = 0) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+
+    $stmt = $conn->prepare("SELECT s.*, u.username FROM scans s JOIN users u ON s.user_id = u.id WHERE s.is_deleted = FALSE ORDER BY s.submitted_at DESC LIMIT ? OFFSET ?");
+    $stmt->bind_param("ii", $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    return $result;
+}
+
+function findDuplicateSubmissions($inputValue) {
+    $conn = getDBConnection();
+    $client = new rabbitMQClient("testRabbitMQ.ini","testServer");
+    
+    $stmt = $conn->prepare("SELECT * FROM scans WHERE input_value = ? AND is_deleted = FALSE ORDER BY submitted_at DESC");
+    $stmt->bind_param("s", $inputValue);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    return $result;
+}
 ?>

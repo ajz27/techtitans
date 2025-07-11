@@ -5,7 +5,9 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
-include 'db.php';
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
@@ -19,39 +21,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    // Check if username/email already exists
-    $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-    $stmt->bind_param("ss", $username, $email);
-    $stmt->execute();
-    $stmt->store_result();
-
-    if ($stmt->num_rows > 0) {
-        header("Location: register.html?error=Username or email already exists");
+    // Basic validation
+    if (empty($username) || empty($email) || empty($password)) {
+        header("Location: register.html?error=All fields are required");
         exit();
     }
 
-    // Hash the password
-    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-    // Insert new user
-    $stmt = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
-    $stmt->bind_param("sss", $username, $email, $hashedPassword);
-
-    if ($stmt->execute()) {
-        $_SESSION['user_id'] = $stmt->insert_id;
-        $_SESSION['username'] = $username;
-
-        // Set localStorage and redirect
-        echo "<script>
-          localStorage.setItem('loggedIn', 'true');
-          window.location.href = 'index.php';
-        </script>";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location: register.html?error=Invalid email format");
         exit();
-    } else {
-        echo "Error: " . $stmt->error;
+    }
+
+    if (strlen($password) < 6) {
+        header("Location: register.html?error=Password must be at least 6 characters");
+        exit();
+    }
+
+    try {
+        // create rabbitmq client
+        $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+
+        // prepare request for rabbitmq
+        $request = array(
+            'type' => 'register',
+            'username' => $username,
+            'email' => $email,
+            'password' => $password
+        );
+
+        // send request to database server via rabbitmq
+        $response = $client->send_request($request);
+
+        // convert to array format consistently to avoid stdclass errors
+        $responseArray = json_decode(json_encode($response), true);
+
+        if ($responseArray && isset($responseArray['success'])) {
+            if ($responseArray['success']) {
+                // registration successful - set session data
+                $_SESSION['user_id'] = $responseArray['user_id'];
+                $_SESSION['username'] = $responseArray['username'];
+                $_SESSION['email'] = $responseArray['email'];
+                $_SESSION['logged_in'] = true;
+
+                echo "<script>
+                  localStorage.setItem('loggedIn', 'true');
+                  localStorage.setItem('username', '" . addslashes($responseArray['username']) . "');
+                  window.location.href = 'index.php';
+                </script>";
+                exit();
+            } else {
+                $error = isset($responseArray['message']) ? $responseArray['message'] : "registration failed";
+                header("Location: register.html?error=" . urlencode($error));
+                exit();
+            }
+        } else {
+            header("Location: register.html?error=server communication error");
+            exit();
+        }
+
+    } catch (Exception $e) {
+        error_log("registration error: " . $e->getMessage());
+        header("Location: register.html?error=system error occurred");
+        exit();
     }
 }
-?>
+
 <?php
 require_once('path.inc');
 require_once('get_host_info.inc');
