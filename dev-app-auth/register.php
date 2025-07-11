@@ -85,4 +85,50 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 }
+
+<?php
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
+require_once __DIR__ . '/vendor/autoload.php';
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Sanitize and hash input
+    $username = trim($_POST['username'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = password_hash($_POST['password'] ?? '', PASSWORD_BCRYPT);
+
+    // Prepare data array
+    $data = [
+        'type'     => 'register',
+        'username' => $username,
+        'email'    => $email,
+        'password' => $password,
+    ];
+
+    // MQ connection setup
+    $host     = '192.168.193.5';
+    $port     = 5672;
+    $user     = 'remote';
+    $pass     = 'remote123';
+    $exchange = 'testExchange';
+
+    $connection = new AMQPStreamConnection($host, 5672, $user, $pass);
+    $channel = $connection->channel();
+
+        // Declare exchange (fanout for broadcasting to all bound queues)
+        $channel->exchange_declare($exchange, 'fanout', false, false, false);
+
+        // Send the message
+        $message = new AMQPMessage(json_encode($data));
+        $channel->basic_publish($message, $exchange);
+
+        // Cleanup
+        $channel->close();
+        $connection->close();
+
+        echo "Registration data sent to MQ.";
+    }
 ?>
+
