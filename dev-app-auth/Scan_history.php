@@ -8,6 +8,8 @@ require_once('rabbitMQLib.inc');
 error_reporting(E_ALL);
 session_start();
 require 'db.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
 
 
 if (isset($_SESSION['user_id'])) {
@@ -63,6 +65,7 @@ try {
         echo json_encode(['error' => $errorMsg]);
         exit;
     }
+
 
 } catch (Exception $e) {
     http_response_code(500);
