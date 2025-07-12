@@ -372,10 +372,10 @@ function request_processor($request)
 
         case 'save_url_scan':
             // Save URL scan result - don't require all fields as some may be optional
-            if (!isset($request['url'])) {
-                return array("success" => false, "message" => "missing url");
+            if (!isset($request['data']) || !isset($request['data']['url'])) {
+                return array("success" => false, "message" => "missing url data");
             }
-            return saveUrlScanResult($request);
+            return saveUrlScanResult($request['data']); // Pass the data array, not the entire request
 
         case 'get_url_scan_history':
             // Get URL scan history for a user
