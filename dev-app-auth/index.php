@@ -51,6 +51,7 @@ $username = htmlspecialchars($user['username']);
         <li class="nav-item"><a class="nav-link active" href="index.php">Home</a></li>
         <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
         <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="Scan_history.php">Scan History</a></li>
         <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
       </ul>
     </div>
@@ -63,6 +64,7 @@ $username = htmlspecialchars($user['username']);
   <p class="mb-4">This is your main portal. From here, you can:</p>
   <div class="d-grid gap-2">
     <a href="dashboard.html" class="btn btn-outline-primary"><i class="bi bi-link-45deg"></i> Access the URL Checker Tool</a>
+    <a href="Scan_history.php" class="btn btn-outline-info"><i class="bi bi-clock-history"></i> View Scan History</a>
     <a href="profile.php" class="btn btn-outline-secondary"><i class="bi bi-person"></i> View your Profile</a>
     <a href="logout.php" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Log Out</a>
   </div>

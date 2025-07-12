@@ -216,6 +216,139 @@ function saveUrlScanResult($data)
     }
 }
 
+function getUrlScanHistory($userId, $limit = 20, $offset = 0)
+{
+    echo "attempting to get URL scan history for user: $userId\n";
+
+    $conn = getDBConnection();
+    if (!$conn) {
+        echo "database connection failed for scan history\n";
+        return array("success" => false, "message" => "database connection failed");
+    }
+
+    try {
+        $stmt = $conn->prepare("
+            SELECT id, user_id, scan_id, scan_date, url, resource, positives, total, 
+                   permalink, response_code, verbose_msg, created_at
+            FROM url_scan_results 
+            WHERE user_id = ? OR user_id IS NULL
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?
+        ");
+
+        if (!$stmt) {
+            echo "prepare statement failed for scan history: " . $conn->error . "\n";
+            $conn->close();
+            return array("success" => false, "message" => "database prepare error");
+        }
+
+        $stmt->bind_param("iii", $userId, $limit, $offset);
+        
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $scans = array();
+            
+            while ($row = $result->fetch_assoc()) {
+                $scans[] = $row;
+            }
+            
+            echo "retrieved " . count($scans) . " scan records\n";
+            $stmt->close();
+            $conn->close();
+            
+            return array(
+                "success" => true,
+                "scans" => $scans,
+                "count" => count($scans)
+            );
+        } else {
+            $error = $stmt->error;
+            echo "query failed for scan history: $error\n";
+            $stmt->close();
+            $conn->close();
+            return array("success" => false, "message" => "failed to retrieve scan history: " . $error);
+        }
+
+    } catch (Exception $e) {
+        echo "exception getting scan history: " . $e->getMessage() . "\n";
+        if (isset($stmt)) $stmt->close();
+        $conn->close();
+        return array("success" => false, "message" => "exception occurred: " . $e->getMessage());
+    }
+}
+
+function getUrlScanDetails($scanId, $userId = null)
+{
+    echo "attempting to get URL scan details for scan: $scanId\n";
+
+    $conn = getDBConnection();
+    if (!$conn) {
+        echo "database connection failed for scan details\n";
+        return array("success" => false, "message" => "database connection failed");
+    }
+
+    try {
+        // Build query - if userId provided, restrict to that user or public scans
+        if ($userId) {
+            $stmt = $conn->prepare("
+                SELECT * FROM url_scan_results 
+                WHERE scan_id = ? AND (user_id = ? OR user_id IS NULL)
+            ");
+            $stmt->bind_param("si", $scanId, $userId);
+        } else {
+            $stmt = $conn->prepare("
+                SELECT * FROM url_scan_results 
+                WHERE scan_id = ?
+            ");
+            $stmt->bind_param("s", $scanId);
+        }
+
+        if (!$stmt) {
+            echo "prepare statement failed for scan details: " . $conn->error . "\n";
+            $conn->close();
+            return array("success" => false, "message" => "database prepare error");
+        }
+        
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $scan = $result->fetch_assoc();
+            
+            if ($scan) {
+                // Parse scans_json back to object for display
+                if (!empty($scan['scans_json'])) {
+                    $scan['scans'] = json_decode($scan['scans_json'], true);
+                }
+                
+                echo "retrieved scan details for scan_id: $scanId\n";
+                $stmt->close();
+                $conn->close();
+                
+                return array(
+                    "success" => true,
+                    "scan" => $scan
+                );
+            } else {
+                echo "no scan found with id: $scanId\n";
+                $stmt->close();
+                $conn->close();
+                return array("success" => false, "message" => "scan not found");
+            }
+        } else {
+            $error = $stmt->error;
+            echo "query failed for scan details: $error\n";
+            $stmt->close();
+            $conn->close();
+            return array("success" => false, "message" => "failed to retrieve scan details: " . $error);
+        }
+
+    } catch (Exception $e) {
+        echo "exception getting scan details: " . $e->getMessage() . "\n";
+        if (isset($stmt)) $stmt->close();
+        $conn->close();
+        return array("success" => false, "message" => "exception occurred: " . $e->getMessage());
+    }
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -243,6 +376,23 @@ function request_processor($request)
                 return array("success" => false, "message" => "missing url");
             }
             return saveUrlScanResult($request);
+
+        case 'get_url_scan_history':
+            // Get URL scan history for a user
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $limit = $request['limit'] ?? 20;
+            $offset = $request['offset'] ?? 0;
+            return getUrlScanHistory($request['user_id'], $limit, $offset);
+
+        case 'get_url_scan_details':
+            // Get detailed scan results
+            if (!isset($request['scan_id'])) {
+                return array("success" => false, "message" => "missing scan_id");
+            }
+            $userId = $request['user_id'] ?? null;
+            return getUrlScanDetails($request['scan_id'], $userId);
 
         // --- SCAN HANDLERS ---
         case 'submit_scan':
