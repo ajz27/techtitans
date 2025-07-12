@@ -37,7 +37,47 @@ function scanUrl($url, $apiKey) {
 }
 
 /**
+ * Save scan results to database via RabbitMQ (fire-and-forget)
  * 
+ * @param object $scanResult The VirusTotal scan result
+ * @param string $url The scanned URL
+ * @param int|null $userId Optional user ID to associate with the scan
+ */
+function saveScanResultAsync($scanResult, $url, $userId = null) {
+    try {
+        // Create RabbitMQ client for database communication
+        $dbClient = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+        
+        // Prepare data for database storage
+        $dbRequest = array(
+            'type' => 'save_url_scan',
+            'user_id' => $userId,
+            'scan_id' => $scanResult->scan_id ?? null,
+            'scan_date' => $scanResult->scan_date ?? null,
+            'url' => $url,
+            'resource' => $scanResult->resource ?? null,
+            'positives' => $scanResult->positives ?? 0,
+            'total' => $scanResult->total ?? 0,
+            'permalink' => $scanResult->permalink ?? null,
+            'response_code' => $scanResult->response_code ?? null,
+            'verbose_msg' => $scanResult->verbose_msg ?? null,
+            'scans_json' => isset($scanResult->scans) ? json_encode($scanResult->scans) : null
+        );
+        
+        // Send to database server - we intentionally don't wait for response
+        // to keep this operation non-blocking for the frontend
+        $response = $dbClient->send_request($dbRequest);
+        echo "Scan result sent to database for storage\n";
+        
+    } catch (Exception $e) {
+        // Log error but don't let it affect the API response to frontend
+        error_log("Failed to save scan result to database: " . $e->getMessage());
+        echo "Warning: Could not save scan result to database: " . $e->getMessage() . "\n";
+    }
+}
+
+/**
+ * Process incoming requests
  * 
  * @param array 
  * @return array|object 
@@ -45,9 +85,8 @@ function scanUrl($url, $apiKey) {
 function requestProcessor($request) {
     // echo "Received request...\n";
     
-    // Log request data for debuggingw
+    // Log request data for debugging
     // var_dump($request);
-    
     
     switch ($request['type'] ?? '') {
         case "virus_scan":
@@ -57,12 +96,18 @@ function requestProcessor($request) {
             }
             
             $url = $request['url'];
+            $userId = $request['user_id'] ?? null; // Optional user ID
             // echo "Scanning URL: $url\n";
             
-            
+            // Get scan result from VirusTotal
             $result = scanUrl($url, VIRUSTOTAL_API_KEY);
             
-            // Return the result
+            // If scan was successful, save to database asynchronously
+            if (!isset($result->error) && isset($result->scan_id)) {
+                saveScanResultAsync($result, $url, $userId);
+            }
+            
+            // Return the result to frontend immediately
             return $result;
             
         default:

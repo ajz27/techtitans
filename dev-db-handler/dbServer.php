@@ -144,6 +144,78 @@ function login($username, $password)
     return array("success" => false, "message" => "invalid credentials");
 }
 
+function saveUrlScanResult($data)
+{
+    echo "attempting to save url scan result for URL: " . ($data['url'] ?? 'unknown') . "\n";
+
+    $conn = getDBConnection();
+    if (!$conn) {
+        echo "database connection failed for scan save\n";
+        return array("success" => false, "message" => "database connection failed");
+    }
+
+    try {
+        // Convert scan_date to proper MySQL datetime format if provided
+        $scanDate = null;
+        if (!empty($data['scan_date'])) {
+            $scanDate = date('Y-m-d H:i:s', strtotime($data['scan_date']));
+        }
+
+        // Prepare the insert statement
+        $stmt = $conn->prepare("
+            INSERT INTO url_scan_results 
+            (user_id, scan_id, scan_date, url, resource, positives, total, permalink, response_code, verbose_msg, scans_json) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            echo "prepare statement failed for url scan save: " . $conn->error . "\n";
+            $conn->close();
+            return array("success" => false, "message" => "database prepare error");
+        }
+
+        // Bind parameters
+        $stmt->bind_param(
+            "issssiissss",
+            $data['user_id'],           // int or null
+            $data['scan_id'],           // string
+            $scanDate,                  // datetime
+            $data['url'],               // string
+            $data['resource'],          // string
+            $data['positives'],         // int
+            $data['total'],             // int
+            $data['permalink'],         // string
+            $data['response_code'],     // int
+            $data['verbose_msg'],       // string
+            $data['scans_json']         // longtext
+        );
+
+        if ($stmt->execute()) {
+            $insertId = $stmt->insert_id;
+            echo "url scan result saved successfully with id: $insertId\n";
+            $stmt->close();
+            $conn->close();
+            return array(
+                "success" => true,
+                "message" => "scan result saved successfully",
+                "id" => $insertId
+            );
+        } else {
+            $error = $stmt->error;
+            echo "insert failed for url scan: $error\n";
+            $stmt->close();
+            $conn->close();
+            return array("success" => false, "message" => "failed to save scan result: " . $error);
+        }
+
+    } catch (Exception $e) {
+        echo "exception saving url scan result: " . $e->getMessage() . "\n";
+        if (isset($stmt)) $stmt->close();
+        $conn->close();
+        return array("success" => false, "message" => "exception occurred: " . $e->getMessage());
+    }
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -165,7 +237,14 @@ function request_processor($request)
             }
             return login($request['username'], $request['password']);
 
-        // --- NEW SCAN HANDLERS ---
+        case 'save_url_scan':
+            // Save URL scan result - don't require all fields as some may be optional
+            if (!isset($request['url'])) {
+                return array("success" => false, "message" => "missing url");
+            }
+            return saveUrlScanResult($request);
+
+        // --- SCAN HANDLERS ---
         case 'submit_scan':
             if (!isset($request['user_id']) || !isset($request['scan_type']) || !isset($request['input_value'])) {
                 return array("success" => false, "message" => "missing user_id, scan_type, or input_value");

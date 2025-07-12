@@ -24,6 +24,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
         $request['type'] = "virus_scan";
         $request['url'] = $url;
         
+        // Include user_id if user is logged in for database association
+        if (isset($_SESSION['user_id'])) {
+            $request['user_id'] = $_SESSION['user_id'];
+        }
+        
         // Send request to API server
         $response = $client->send_request($request);
         
