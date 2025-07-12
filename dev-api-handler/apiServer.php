@@ -52,16 +52,16 @@ function saveScanResultAsync($scanResult, $url, $userId = null) {
             'type' => 'save_url_scan',
             'data' => [
                 'user_id' => $userId,
-                'scan_id' => $scanResult['scan_id'] ?? null,
-                'scan_date' => $scanResult['scan_date'] ?? date('Y-m-d H:i:s'),
+                'scan_id' => $scanResult->scan_id ?? null,
+                'scan_date' => $scanResult->scan_date ?? date('Y-m-d H:i:s'),
                 'url' => $url,
-                'resource' => $scanResult['resource'] ?? $url,
-                'positives' => $scanResult['positives'] ?? 0,
-                'total' => $scanResult['total'] ?? 0,
-                'permalink' => $scanResult['permalink'] ?? '',
-                'response_code' => $scanResult['response_code'] ?? 0,
-                'verbose_msg' => $scanResult['verbose_msg'] ?? '',
-                'scans_json' => json_encode($scanResult['scans'] ?? [])
+                'resource' => $scanResult->resource ?? $url,
+                'positives' => $scanResult->positives ?? 0,
+                'total' => $scanResult->total ?? 0,
+                'permalink' => $scanResult->permalink ?? '',
+                'response_code' => $scanResult->response_code ?? 0,
+                'verbose_msg' => $scanResult->verbose_msg ?? '',
+                'scans_json' => json_encode($scanResult->scans ?? [])
             ]
         ];
         
