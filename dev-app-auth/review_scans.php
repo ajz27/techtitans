@@ -1,33 +1,45 @@
 <?php
+// Show all errors for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-require_once('db.php');
-$conn = getDBConnection();
+session_start();
+require_once('path.inc');
+require_once('get_host_info.inc');
+require_once('rabbitMQLib.inc');
 
-// Get filter & pagination
+// Extract filters and limits from URL params
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
 $filter_status = $_GET['status'] ?? '';
 $filter_type = $_GET['scan_type'] ?? '';
 
-$query = "SELECT * FROM Scans WHERE 1=1";
-$params = [];
+// Prepare RabbitMQ request
+$request = [
+    'type' => 'get_scans',
+    'limit' => $limit,
+    'status' => $filter_status,
+    'scan_type' => $filter_type
+];
 
-if (!empty($filter_status)) {
-    $query .= " AND status = ?";
-    $params[] = $filter_status;
+try {
+    $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+    $response = $client->send_request($request);
+
+    // Safely decode and extract data
+    $scans = [];
+
+    if (isset($response['success']) && $response['success'] === true && isset($response['data']) && is_array($response['data'])) {
+        $scans = $response['data'];
+    } else {
+        $error_message = isset($response['message']) ? $response['message'] : 'Unexpected response from server.';
+        error_log("Scan fetch error: $error_message");
+    }
+
+} catch (Exception $e) {
+    error_log("RabbitMQ error: " . $e->getMessage());
+    $scans = [];
 }
-if (!empty($filter_type)) {
-    $query .= " AND scan_type = ?";
-    $params[] = $filter_type;
-}
-
-$query .= " ORDER BY timestamp DESC LIMIT ?";
-$params[] = $limit;
-
-$stmt = $conn->prepare($query);
-$types = str_repeat("s", count($params) - 1) . "i"; // s for strings, i for limit
-$stmt->bind_param($types, ...$params);
-$stmt->execute();
-$result = $stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -35,8 +47,10 @@ $result = $stmt->get_result();
 <head>
     <title>Review Submitted Scans</title>
     <style>
-        table { border-collapse: collapse; width: 100%; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
+        form { margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -46,24 +60,24 @@ $result = $stmt->get_result();
         <label>Status:</label>
         <select name="status">
             <option value="">All</option>
-            <option value="flagged" <?= $filter_status == 'flagged' ? 'selected' : '' ?>>Flagged</option>
-            <option value="approved" <?= $filter_status == 'approved' ? 'selected' : '' ?>>Approved</option>
-            <option value="archived" <?= $filter_status == 'archived' ? 'selected' : '' ?>>Archived</option>
-            <option value="pending" <?= $filter_status == 'pending' ? 'selected' : '' ?>>Pending</option>
+            <option value="flagged" <?= $filter_status === 'flagged' ? 'selected' : '' ?>>Flagged</option>
+            <option value="approved" <?= $filter_status === 'approved' ? 'selected' : '' ?>>Approved</option>
+            <option value="archived" <?= $filter_status === 'archived' ? 'selected' : '' ?>>Archived</option>
+            <option value="pending" <?= $filter_status === 'pending' ? 'selected' : '' ?>>Pending</option>
         </select>
 
         <label>Scan Type:</label>
         <select name="scan_type">
             <option value="">All</option>
-            <option value="url" <?= $filter_type == 'url' ? 'selected' : '' ?>>URL</option>
-            <option value="ip" <?= $filter_type == 'ip' ? 'selected' : '' ?>>IP</option>
-            <option value="domain" <?= $filter_type == 'domain' ? 'selected' : '' ?>>Domain</option>
+            <option value="url" <?= $filter_type === 'url' ? 'selected' : '' ?>>URL</option>
+            <option value="ip" <?= $filter_type === 'ip' ? 'selected' : '' ?>>IP</option>
+            <option value="domain" <?= $filter_type === 'domain' ? 'selected' : '' ?>>Domain</option>
         </select>
 
         <label>Show:</label>
         <select name="limit">
             <?php foreach ([10, 25, 50, 100] as $l): ?>
-                <option value="<?= $l ?>" <?= $limit == $l ? 'selected' : '' ?>><?= $l ?></option>
+                <option value="<?= $l ?>" <?= $limit === $l ? 'selected' : '' ?>><?= $l ?></option>
             <?php endforeach; ?>
         </select>
 
@@ -87,39 +101,37 @@ $result = $stmt->get_result();
             </tr>
         </thead>
         <tbody>
-            <?php while ($row = $result->fetch_assoc()): ?>
-                <tr>
-                    <td><?= $row['id'] ?></td>
-                    <td><?= htmlspecialchars($row['submitted_by']) ?></td>
-                    <td><?= $row['scan_type'] ?></td>
-                    <td><?= htmlspecialchars($row['scan_value']) ?></td>
-                    <td><?= $row['status'] ?></td>
-                    <td><?= $row['safety'] ?></td>
-                    <td><?= $row['risk_score'] ?></td>
-                    <td><?= htmlspecialchars($row['antivirus_results']) ?></td>
-                    <td><?= htmlspecialchars($row['notes']) ?></td>
-                    <td><?= $row['timestamp'] ?></td>
-                    <td>
-                        <form action="update_scan.php" method="POST" style="display:inline;">
-                            <input type="hidden" name="scan_id" value="<?= $row['id'] ?>">
-                            <select name="status">
-                                <option value="approved">Approve</option>
-                                <option value="flagged">Flag</option>
-                                <option value="archived">Archive</option>
-                            </select>
-                            <input type="text" name="notes" placeholder="Add note">
-                            <button type="submit">Update</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endwhile; ?>
+            <?php if (!empty($scans)): ?>
+                <?php foreach ($scans as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($row['id']) ?></td>
+                        <td><?= htmlspecialchars($row['submitted_by']) ?></td>
+                        <td><?= htmlspecialchars($row['scan_type']) ?></td>
+                        <td><?= htmlspecialchars($row['scan_value']) ?></td>
+                        <td><?= htmlspecialchars($row['status']) ?></td>
+                        <td><?= htmlspecialchars($row['safety']) ?></td>
+                        <td><?= htmlspecialchars($row['risk_score']) ?></td>
+                        <td><?= htmlspecialchars($row['antivirus_results']) ?></td>
+                        <td><?= htmlspecialchars($row['notes']) ?></td>
+                        <td><?= htmlspecialchars($row['timestamp']) ?></td>
+                        <td>
+                            <form action="update_scan.php" method="POST" style="display:inline;">
+                                <input type="hidden" name="scan_id" value="<?= htmlspecialchars($row['id']) ?>">
+                                <select name="status">
+                                    <option value="approved">Approve</option>
+                                    <option value="flagged">Flag</option>
+                                    <option value="archived">Archive</option>
+                                </select>
+                                <input type="text" name="notes" placeholder="Add note">
+                                <button type="submit">Update</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="11">No scans found or an error occurred.</td></tr>
+            <?php endif; ?>
         </tbody>
     </table>
-
 </body>
 </html>
-
-<?php
-$stmt->close();
-$conn->close();
-?>
