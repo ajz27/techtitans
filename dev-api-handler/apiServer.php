@@ -70,7 +70,7 @@ function saveScanResultAsync($scanResult, $url, $userId = null) {
         $response = $dbClient->send_request($request);
         
         // Log success for debugging (optional)
-        if (isset($response['success']) && $response['success']) {
+        if (isset($response->success) && $response->success) {
             error_log("Scan result saved successfully to database");
         }
         
