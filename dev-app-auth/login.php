@@ -21,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         // create rabbitmq client
-        $client = new rabbitMQClient("dbServerRabbitMQ.ini", "dbServer");
+        $client = new rabbitMQClient("loginRabbitMQ.ini", "testServer");
 
         // prepare request for rabbitmq
         $request = array(
