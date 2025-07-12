@@ -46,7 +46,7 @@ function scanUrl($url, $apiKey) {
 function saveScanResultAsync($scanResult, $url, $userId = null) {
     try {
         // Use the database server configuration instead of test configuration
-        $dbClient = new rabbitMQClient("dbServerRabbitMQ.ini", "dbServer");
+        $dbClient = new rabbitMQClient("testRabbitMQ.ini", "testServer");
         
         $request = [
             'type' => 'save_url_scan',
