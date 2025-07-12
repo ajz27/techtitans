@@ -65,8 +65,14 @@ function saveScanResultAsync($scanResult, $url, $userId = null) {
             ]
         ];
         
-        // Send the request without waiting for response (fire and forget)
-        $dbClient->publish($request);
+        // Use send_request instead of publish (more reliable)
+        // Note: This will wait for a response but ensures the data is saved
+        $response = $dbClient->send_request($request);
+        
+        // Log success for debugging (optional)
+        if (isset($response['success']) && $response['success']) {
+            error_log("Scan result saved successfully to database");
+        }
         
     } catch (Exception $e) {
         // Log error but don't interrupt the main flow
