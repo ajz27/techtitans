@@ -45,34 +45,32 @@ function scanUrl($url, $apiKey) {
  */
 function saveScanResultAsync($scanResult, $url, $userId = null) {
     try {
-        // Create RabbitMQ client for database communication
-        $dbClient = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+        // Use the database server configuration instead of test configuration
+        $dbClient = new rabbitMQClient("dbServerRabbitMQ.ini", "dbServer");
         
-        // Prepare data for database storage
-        $dbRequest = array(
+        $request = [
             'type' => 'save_url_scan',
-            'user_id' => $userId,
-            'scan_id' => $scanResult->scan_id ?? null,
-            'scan_date' => $scanResult->scan_date ?? null,
-            'url' => $url,
-            'resource' => $scanResult->resource ?? null,
-            'positives' => $scanResult->positives ?? 0,
-            'total' => $scanResult->total ?? 0,
-            'permalink' => $scanResult->permalink ?? null,
-            'response_code' => $scanResult->response_code ?? null,
-            'verbose_msg' => $scanResult->verbose_msg ?? null,
-            'scans_json' => isset($scanResult->scans) ? json_encode($scanResult->scans) : null
-        );
+            'data' => [
+                'user_id' => $userId,
+                'scan_id' => $scanResult['scan_id'] ?? null,
+                'scan_date' => $scanResult['scan_date'] ?? date('Y-m-d H:i:s'),
+                'url' => $url,
+                'resource' => $scanResult['resource'] ?? $url,
+                'positives' => $scanResult['positives'] ?? 0,
+                'total' => $scanResult['total'] ?? 0,
+                'permalink' => $scanResult['permalink'] ?? '',
+                'response_code' => $scanResult['response_code'] ?? 0,
+                'verbose_msg' => $scanResult['verbose_msg'] ?? '',
+                'scans_json' => json_encode($scanResult['scans'] ?? [])
+            ]
+        ];
         
-        // Send to database server - we intentionally don't wait for response
-        // to keep this operation non-blocking for the frontend
-        $response = $dbClient->send_request($dbRequest);
-        echo "Scan result sent to database for storage\n";
+        // Send the request without waiting for response (fire and forget)
+        $dbClient->publish($request);
         
     } catch (Exception $e) {
-        // Log error but don't let it affect the API response to frontend
+        // Log error but don't interrupt the main flow
         error_log("Failed to save scan result to database: " . $e->getMessage());
-        echo "Warning: Could not save scan result to database: " . $e->getMessage() . "\n";
     }
 }
 

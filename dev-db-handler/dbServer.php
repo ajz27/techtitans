@@ -470,7 +470,7 @@ function request_processor($request)
 }
 
 // start
-$server = new rabbitMQServer("testRabbitMQ.ini", "testServer");
+$server = new rabbitMQServer("dbServerRabbitMQ.ini", "dbServer");
 
 echo "database rabbitmq server started\n";
 $server->process_requests('request_processor');

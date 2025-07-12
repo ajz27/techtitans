@@ -41,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
 
 // Get scan history
 try {
-    $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+    $client = new rabbitMQClient("dbServerRabbitMQ.ini", "dbServer");
     
     $request = array(
         'type' => 'get_url_scan_history',
