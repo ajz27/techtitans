@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+    <meta charset="UTF-8">
+    <title>Scan History</title>
+
+    <style>
+        body {
+            background: #b3d9ff; 
+            font-family: 'Segoe UI', sans-serif;
+            margin: 20px;
+        }
+
+        .scan-history-button {
+            padding : 10px 20px;
+            font-size: 16px;
+            background-color: white;
+            color: black;
+            border : 2px solid black;
+            border : 25px;
+            cursor: pointer;
+            transition : background-color 0.3s ease, color 0.3s ease;
+        }
+        .scan-history-button:hover {
+            background-color: #28a745;
+            color: white;
+            border-color: black;
+        }
+       /* 
+         .error {
+            color: red;
+            margin-top: 20px;
+        }
+           */ 
+
+        table {
+        width: 100%;
+        border-collapse: collapse; /* Merges borders into a single line */
+        margin-top: 20px;
+        font-family: Arial, sans-serif;
+        background-color: white;
+        border-radius: 12px;
+        overflow: hidden;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid black; /* Clear black borders */
+            text-align: left;
+        }
+
+        th {
+            background-color: #004080;
+            color: white;
+        }
+
+        .low-risk {
+            background-color: #d4edda; /* green */
+        }
+
+        .medium-risk {
+            background-color: #fff3cd; /* yellow */
+        }
+
+        .high-risk {
+            background-color: #f8d7da; /* red */
+        }
+    </style>
+    <script>
+    function loadScanHistory() {
+        alert("Loading scan history");
+    }
+    </script>
+
+<body>
+    <h1>Scan History Viewer</h1>
+
+    <button class="scan-history-button" onclick="loadScanHistory()">Scan History</button>
+<body>
+    <h1>Scan History</h1>
+
+    <table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>User ID</th>
+            <th>Scan Type</th>
+            <th>Input Value</th>
+            <th>Status</th>
+            <th>Risk Score</th>
+            <th>Submitted At</th>
+            <th>Last Scanned At</th>
+            <th>Is Deleted</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($scans as $scan): ?>
+            <?php
+                $score = floatval($scan['risk_score']);
+                $riskClass = $score < 3 ? 'low-risk' : ($score < 6 ? 'medium-risk' : 'high-risk');
+            ?>
+            <tr class="<?= $riskClass ?>">
+                <td><?= htmlspecialchars($scan['id']) ?></td>
+                <td><?= htmlspecialchars($scan['user_id']) ?></td>
+                <td><?= htmlspecialchars($scan['scan_type']) ?></td>
+                <td><?= htmlspecialchars($scan['input_value']) ?></td>
+                <td><?= htmlspecialchars($scan['status']) ?></td>
+                <td><?= htmlspecialchars($scan['risk_score']) ?></td>
+                <td><?= htmlspecialchars($scan['submitted_at']) ?></td>
+                <td><?= htmlspecialchars($scan['last_scanned_at']) ?></td>
+                <td><?= $scan['is_deleted'] ? 'Yes' : 'No' ?></td>
+            </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+
+</body>
+</html>
