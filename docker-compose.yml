@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Frontend Service (Apache + PHP)
+  frontend:
+    build: ./dev-app-auth
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dev-app-auth:/var/www/html
+      - /var/www/html/vendor # <--- ADD THIS LINE
+    depends_on:
+      - rabbitmq
+      - db
+
+  # Database Handler Service (PHP)
+  db-handler:
+    build: ./dev-db-handler
+    volumes:
+      - ./dev-db-handler:/app
+      - /app/vendor # <--- ADD THIS LINE
+    depends_on:
+      - rabbitmq
+      - db
+
+  # API Handler Service (PHP)
+  api-handler:
+    build: ./dev-api-handler
+    volumes:
+      - ./dev-api-handler:/app
+      - /app/vendor # <--- ADD THIS LINE
+    depends_on:
+      - rabbitmq
+
+  # RabbitMQ Service
+  rabbitmq:
+    image: rabbitmq:3.10-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: remote
+      RABBITMQ_DEFAULT_PASS: remote123
+      RABBITMQ_DEFAULT_VHOST: testHost
+
+  # MySQL Database Service
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: userDatabase
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test
+      MYSQL_ROOT_PASSWORD: test
+    volumes:
+      - db-data:/var/lib/mysql
+
+volumes:
+  db-data: {}
