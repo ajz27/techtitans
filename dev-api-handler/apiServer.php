@@ -66,7 +66,7 @@ function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
         // Send request to database server
         $response = $dbClient->send_request($request);
         
-        return isset($response['success']) && $response['success'];
+        return isset($response->success) && $response->success;
         
     } catch (Exception $e) {
         error_log("Failed to save scan to database: " . $e->getMessage());
