@@ -10,7 +10,7 @@ define('VIRUSTOTAL_API_URL', 'https://www.virustotal.com/vtapi/v2/url/report');
  * 
  * @param string 
  * @param string 
- * @return array|object 
+ * @return array 
  */
 function scanUrl($url, $apiKey) {
     $postData = http_build_query(['apikey' => $apiKey, 'resource' => $url]);
@@ -29,7 +29,7 @@ function scanUrl($url, $apiKey) {
     curl_close($curl);
     
     if ($httpCode !== 200) {
-        return (object)['error' => "HTTP Error: $httpCode"];
+        return ['error' => "HTTP Error: $httpCode"]; // Return array instead of object
     }
     
     
@@ -41,7 +41,7 @@ function scanUrl($url, $apiKey) {
  * 
  * @param int $userId
  * @param string $scannedUrl
- * @param object $scanResult
+ * @param array $scanResult
  * @return bool
  */
 function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
@@ -78,7 +78,7 @@ function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
  * 
  * 
  * @param array 
- * @return array|object 
+ * @return array 
  */
 function requestProcessor($request) {
     // echo "Received request...\n";
@@ -91,7 +91,7 @@ function requestProcessor($request) {
         case "virus_scan":
             // Handle URL scan request
             if (!isset($request['url'])) {
-                return (object)['error' => 'No URL provided'];
+                return ['error' => 'No URL provided']; // Return array instead of object
             }
             
             $url = $request['url'];
@@ -115,7 +115,7 @@ function requestProcessor($request) {
             return $result;
             
         default:
-            return (object)['error' => 'Unknown request type: ' . ($request['type'] ?? 'undefined')];
+            return ['error' => 'Unknown request type: ' . ($request['type'] ?? 'undefined')]; // Return array instead of object
     }
 }
 
