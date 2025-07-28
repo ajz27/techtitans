@@ -45,6 +45,7 @@ function scanUrl($url, $apiKey) {
  * @return bool
  */
 function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
+    $dbClient = null;
     try {
         // Create database client
         $dbClient = new rabbitMQClient("testRabbitMQ.ini", "testServer");
@@ -66,10 +67,21 @@ function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
         // Send request to database server
         $response = $dbClient->send_request($request);
         
+        // Properly close the connection
+        if (method_exists($dbClient, 'close')) {
+            $dbClient->close();
+        }
+        
         return isset($response->success) && $response->success;
         
     } catch (Exception $e) {
         error_log("Failed to save scan to database: " . $e->getMessage());
+        
+        // Ensure connection is closed even on error
+        if ($dbClient && method_exists($dbClient, 'close')) {
+            $dbClient->close();
+        }
+        
         return false;
     }
 }
