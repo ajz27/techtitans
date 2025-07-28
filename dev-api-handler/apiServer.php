@@ -33,7 +33,7 @@ function scanUrl($url, $apiKey) {
     }
     
     
-    return json_decode($response);
+    return json_decode($response, true); // true parameter returns associative array instead of object
 }
 
 /**
@@ -53,7 +53,7 @@ function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
         $scanData = [
             'scan_timestamp' => date('Y-m-d H:i:s'),
             'scanned_url' => $scannedUrl,
-            'scan_result' => (array)$scanResult
+            'scan_result' => $scanResult // Already an array now
         ];
         
         // Prepare request for database server
@@ -102,7 +102,7 @@ function requestProcessor($request) {
             $result = scanUrl($url, VIRUSTOTAL_API_KEY);
             
             // If scan was successful and we have a user ID, save to database
-            if (!isset($result->error) && $userId) {
+            if (!isset($result['error']) && $userId) {
                 $saved = saveScanToDatabase($userId, $url, $result);
                 if ($saved) {
                     echo "Scan results saved to database for user $userId\n";
