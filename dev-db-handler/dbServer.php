@@ -144,6 +144,66 @@ function login($username, $password)
     return array("success" => false, "message" => "invalid credentials");
 }
 
+function saveUrlScan($userId, $scanData) {
+    $conn = getDBConnection();
+    
+    try {
+        $scanResult = $scanData['scan_result'];
+        
+        $scannedUrl = $scanData['scanned_url'];
+        $scanId = $scanResult['scan_id'];
+        $permalink = $scanResult['permalink'];
+        $scanTimestamp = $scanData['scan_timestamp'];
+        $scanDate = $scanResult['scan_date'];
+        $totalEngines = $scanResult['total'];
+        $positiveDetections = $scanResult['positives'];
+        $responseCode = $scanResult['response_code'];
+        $verboseMsg = $scanResult['verbose_msg'];
+        
+        $stmt = $conn->prepare("
+            INSERT INTO url_scans (
+                user_id, scanned_url, scan_id, permalink, scan_timestamp, 
+                scan_date, total_engines, positive_detections, response_code, verbose_msg
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->bind_param(
+            "isssssiiis",
+            $userId, $scannedUrl, $scanId, $permalink, $scanTimestamp,
+            $scanDate, $totalEngines, $positiveDetections, $responseCode, $verboseMsg
+        );
+        
+        $stmt->execute();
+        $insertedId = $conn->insert_id;
+        $stmt->close();
+        $conn->close();
+        
+        return $insertedId;
+        
+    } catch (Exception $e) {
+        $conn->close();
+        throw new Exception("Failed to save URL scan: " . $e->getMessage());
+    }
+}
+
+function getUserUrlScans($userId, $limit = 50) {
+    $conn = getDBConnection();
+    
+    $stmt = $conn->prepare("
+        SELECT * FROM url_scans 
+        WHERE user_id = ? 
+        ORDER BY scan_timestamp DESC 
+        LIMIT ?
+    ");
+    $stmt->bind_param("ii", $userId, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -236,6 +296,25 @@ function request_processor($request)
                 "success" => true,
                 "duplicates" => findDuplicateSubmissions($request['input_value'])
             ];
+
+        case 'save_url_scan':
+            if (!isset($request['user_id']) || !isset($request['scan_data'])) {
+                return array("success" => false, "message" => "missing required parameters");
+            }
+            try {
+                $scanId = saveUrlScan($request['user_id'], $request['scan_data']);
+                return array("success" => true, "scan_id" => $scanId);
+            } catch (Exception $e) {
+                return array("success" => false, "message" => $e->getMessage());
+            }
+
+        case 'get_user_url_scans':
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $limit = $request['limit'] ?? 50;
+            $scans = getUserUrlScans($request['user_id'], $limit);
+            return array("success" => true, "scans" => $scans);
     }
 
 }

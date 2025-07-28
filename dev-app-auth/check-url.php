@@ -19,10 +19,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['url'])) {
         
         $client = new rabbitMQClient("apiRabbitMQ.ini", "apiRequest");
         
+        // Get user info from session
+        $user = getSessionUser();
+        $userId = $user ? $user['user_id'] : null;
+        
         // Create request message
         $request = array();
         $request['type'] = "virus_scan";
         $request['url'] = $url;
+        if ($userId) {
+            $request['user_id'] = $userId; // Include user ID for database saving
+        }
         
         // Send request to API server
         $response = $client->send_request($request);

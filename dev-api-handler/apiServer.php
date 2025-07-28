@@ -37,6 +37,44 @@ function scanUrl($url, $apiKey) {
 }
 
 /**
+ * Save scan results to database via RabbitMQ
+ * 
+ * @param int $userId
+ * @param string $scannedUrl
+ * @param object $scanResult
+ * @return bool
+ */
+function saveScanToDatabase($userId, $scannedUrl, $scanResult) {
+    try {
+        // Create database client
+        $dbClient = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+        
+        // Prepare scan data in the format expected by the database
+        $scanData = [
+            'scan_timestamp' => date('Y-m-d H:i:s'),
+            'scanned_url' => $scannedUrl,
+            'scan_result' => (array)$scanResult
+        ];
+        
+        // Prepare request for database server
+        $request = [
+            'type' => 'save_url_scan',
+            'user_id' => $userId,
+            'scan_data' => $scanData
+        ];
+        
+        // Send request to database server
+        $response = $dbClient->send_request($request);
+        
+        return isset($response['success']) && $response['success'];
+        
+    } catch (Exception $e) {
+        error_log("Failed to save scan to database: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * 
  * 
  * @param array 
@@ -57,10 +95,21 @@ function requestProcessor($request) {
             }
             
             $url = $request['url'];
+            $userId = $request['user_id'] ?? null; // Get user ID from request
             // echo "Scanning URL: $url\n";
             
             
             $result = scanUrl($url, VIRUSTOTAL_API_KEY);
+            
+            // If scan was successful and we have a user ID, save to database
+            if (!isset($result->error) && $userId) {
+                $saved = saveScanToDatabase($userId, $url, $result);
+                if ($saved) {
+                    echo "Scan results saved to database for user $userId\n";
+                } else {
+                    echo "Failed to save scan results to database\n";
+                }
+            }
             
             // Return the result
             return $result;
