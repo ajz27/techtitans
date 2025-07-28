@@ -158,8 +158,16 @@ class rabbitMQClient
     function consume(){
         $conn = $this->get_connection();
         $this->channel = $conn->channel();
-        $this->callback_queue = $this->queue . '.response';
-        $this->channel->queue_declare($this->callback_queue, false, false, true, false);
+        
+        // Create unique response queue with short TTL
+        $this->callback_queue = $this->queue . '.response.' . uniqid();
+        
+        $args = new \PhpAmqpLib\Wire\AMQPTable([
+            'x-expires' => 5000,  // 5 seconds TTL - very short for temporary queues
+            'x-message-ttl' => 3000  // 3 seconds for messages
+        ]);
+        
+        $this->channel->queue_declare($this->callback_queue, false, false, true, true, false, $args);
         $this->channel->basic_consume($this->callback_queue, '', false, true, false, false,
         array($this, 'process_response'));
     }
