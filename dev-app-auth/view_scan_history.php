@@ -35,9 +35,19 @@ function getUserScanHistory($userId, $limit = 50) {
     // Send request to the database server
     $response = $client->send_request($request);
     
+    // Check if the response is an object and convert it to array if needed
+    if (is_object($response)) {
+        $response = (array)$response;
+    }
+    
     // Check if response was successful and return the scan data
     if (isset($response['success']) && $response['success'] && isset($response['scans'])) {
-        return $response['scans'];
+        // If scans is an object, convert it to array
+        $scans = $response['scans'];
+        if (is_object($scans)) {
+            $scans = (array)$scans;
+        }
+        return $scans;
     } else {
         return [];
     }
@@ -45,6 +55,11 @@ function getUserScanHistory($userId, $limit = 50) {
 
 // Get scan history for the current user
 $scanHistory = getUserScanHistory($userId);
+
+// Ensure $scanHistory is an array
+if (!is_array($scanHistory)) {
+    $scanHistory = [];
+}
 
 // Define function to get severity class based on positive detections
 function getSeverityClass($positives, $total) {
