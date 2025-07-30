@@ -302,6 +302,10 @@ function formatDate($dateString) {
                     <?php 
                     $counter = 1;
                     foreach ($scanHistory as $scan): 
+                        // Convert each scan to an array if it's an object
+                        if (is_object($scan)) {
+                            $scan = (array)$scan;
+                        }
                         $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
                     ?>
                         <tr>
