@@ -85,57 +85,47 @@ function formatDate($dateString) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Scan History - TechTitans Security</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>URL Scan History - Tech Titans</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #f4f7f9;
+            background: linear-gradient(135deg, #f0eff2, #66a6ff);
+            font-family: 'Segoe UI', sans-serif;
             margin: 0;
-            padding: 0;
-            color: #333;
+            min-height: 100vh;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.85);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-        
-        h1 {
-            color: #004080;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 10px;
-            margin-top: 0;
+
+        .navbar-brand,
+        .nav-link {
+            color: #fff !important;
+            font-weight: 500;
         }
-        
-        .scan-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            border-radius: 5px;
-            overflow: hidden;
+
+        .nav-link:hover {
+            color: #ffd700 !important;
         }
-        
-        .scan-table th, .scan-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            margin-bottom: 2rem;
         }
-        
-        .scan-table th {
-            background-color: #004080;
-            color: white;
-            font-weight: bold;
+
+        .welcome-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 5px solid #007bff;
         }
-        
-        .scan-table tr:hover {
-            background-color: #f9f9f9;
+
+        .table-card {
+            background: rgba(255, 255, 255, 0.9);
         }
-        
+
         .scan-url {
             max-width: 300px;
             overflow: hidden;
@@ -144,211 +134,161 @@ function formatDate($dateString) {
         }
         
         .safe { 
-            color: green;
+            color: #198754;
             font-weight: bold;
         }
         
         .low-risk { 
-            color: #e6b800;
+            color: #ffc107;
             font-weight: bold;
         }
         
         .medium-risk { 
-            color: orange;
+            color: #fd7e14;
             font-weight: bold;
         }
         
         .high-risk { 
-            color: red;
+            color: #dc3545;
             font-weight: bold;
         }
         
         .neutral { 
-            color: gray;
+            color: #6c757d;
             font-weight: bold;
-        }
-        
-        .back-button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #004080;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            margin-top: 20px;
-            font-size: 16px;
-        }
-        
-        .back-button:hover {
-            background-color: #002a57;
         }
         
         .no-scans {
             text-align: center;
             padding: 30px;
-            background: #f8f9fa;
-            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 0.5rem;
             margin: 20px 0;
         }
         
         .scan-details-link {
-            color: #004080;
+            color: #fff;
             text-decoration: none;
+            background-color: #007bff;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.3s ease;
             display: inline-block;
-            padding: 6px 12px;
-            border: 1px solid #004080;
-            border-radius: 4px;
-            font-size: 14px;
         }
         
         .scan-details-link:hover {
-            background-color: #004080;
-            color: white;
-        }
-        
-        .welcome-message {
-            background-color: #e8f4fc;
-            padding: 10px 15px;
-            border-radius: 5px;
-            border-left: 4px solid #004080;
-            margin-bottom: 20px;
-        }
-        
-        .navbar {
-            background-color: #004080;
-            color: white;
-            padding: 10px 0;
-        }
-        
-        .navbar-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .nav-links a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            padding: 8px 12px;
-            border-radius: 4px;
-        }
-        
-        .nav-links a:hover, .nav-links a.active {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        
-        footer {
-            text-align: center;
-            padding: 20px;
-            background-color: #004080;
-            color: white;
-            margin-top: 40px;
+            background-color: #0056b3;
+            color: #fff;
         }
     </style>
 </head>
 <body>
-    <!-- Navigation bar -->
-    <div class="navbar">
-        <div class="navbar-container">
-            <div class="logo">TechTitans Security</div>
-            <div class="nav-links">
-                <a href="dashboard.html">Dashboard</a>
-                <a href="check-url.php">URL Scanner</a>
-                <a href="view_scan_history.php" class="active">Scan History</a>
-                <a href="profile.php">Profile</a>
-                <a href="logout.php">Logout</a>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">Tech Titans</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
+                    <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="view_scan_history.php">Scan History</a></li>
+                    <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
+                </ul>
             </div>
         </div>
-    </div>
+    </nav>
     
     <!-- Main content -->
-    <div class="container">
-        <h1>URL Scan History</h1>
-        
-        <div class="welcome-message">
-            <p>Welcome, <?php echo htmlspecialchars($username); ?>! Here's your URL scan history.</p>
-        </div>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card welcome-card mb-4">
+                    <h3 class="text-center mb-4">URL Scan History</h3>
+                    <div class="alert alert-info">
+                        <p class="mb-0">Welcome, <?php echo htmlspecialchars($username); ?>! Here's your URL scan history.</p>
+                    </div>
         
         <?php if (empty($scanHistory)): ?>
-            <div class="no-scans">
-                <h3>No Scan History Found</h3>
-                <p>You haven't performed any URL scans yet.</p>
-                <p>Go to the <a href="check-url.php">URL Scanner</a> to scan a URL.</p>
+                    <div class="no-scans">
+                        <h4 class="mb-3">No Scan History Found</h4>
+                        <p>You haven't performed any URL scans yet.</p>
+                        <a href="check-url.php" class="btn btn-primary mt-3">Go to URL Scanner</a>
+                    </div>
+                <?php else: ?>
+                    <div class="card table-card">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Scanned URL</th>
+                                        <th>Scan Date</th>
+                                        <th>Result</th>
+                                        <th>Detection Ratio</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php 
+                                    $counter = 1;
+                                    foreach ($scanHistory as $scan): 
+                                        // Convert each scan to an array if it's an object
+                                        if (is_object($scan)) {
+                                            $scan = (array)$scan;
+                                        }
+                                        $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
+                                    ?>
+                                        <tr>
+                                            <td><?php echo $counter++; ?></td>
+                                            <td class="scan-url" title="<?php echo htmlspecialchars($scan['scanned_url']); ?>">
+                                                <?php echo htmlspecialchars($scan['scanned_url']); ?>
+                                            </td>
+                                            <td><?php echo formatDate($scan['scan_timestamp']); ?></td>
+                                            <td class="<?php echo $severityClass; ?>">
+                                                <?php
+                                                if ($scan['positive_detections'] == 0) {
+                                                    echo '✅ Safe';
+                                                } else if ($scan['positive_detections'] < 3) {
+                                                    echo '⚠️ Low Risk';
+                                                } else if ($scan['positive_detections'] < 10) {
+                                                    echo '⚠️ Medium Risk';
+                                                } else {
+                                                    echo '❌ High Risk';
+                                                }
+                                                ?>
+                                            </td>
+                                            <td><?php echo $scan['positive_detections'] . '/' . $scan['total_engines']; ?></td>
+                                            <td>
+                                                <?php if (!empty($scan['permalink'])): ?>
+                                                    <a href="<?php echo htmlspecialchars($scan['permalink']); ?>" target="_blank" class="btn btn-sm btn-primary">
+                                                        View Report
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="text-muted">Report Not Available</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <div class="text-center mt-4">
+                    <a href="dashboard.html" class="btn btn-outline-secondary">Back to Dashboard</a>
+                </div>
             </div>
-        <?php else: ?>
-            <table class="scan-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Scanned URL</th>
-                        <th>Scan Date</th>
-                        <th>Result</th>
-                        <th>Detection Ratio</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $counter = 1;
-                    foreach ($scanHistory as $scan): 
-                        // Convert each scan to an array if it's an object
-                        if (is_object($scan)) {
-                            $scan = (array)$scan;
-                        }
-                        $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
-                    ?>
-                        <tr>
-                            <td><?php echo $counter++; ?></td>
-                            <td class="scan-url" title="<?php echo htmlspecialchars($scan['scanned_url']); ?>">
-                                <?php echo htmlspecialchars($scan['scanned_url']); ?>
-                            </td>
-                            <td><?php echo formatDate($scan['scan_timestamp']); ?></td>
-                            <td class="<?php echo $severityClass; ?>">
-                                <?php
-                                if ($scan['positive_detections'] == 0) {
-                                    echo 'Safe';
-                                } else if ($scan['positive_detections'] < 3) {
-                                    echo 'Low Risk';
-                                } else if ($scan['positive_detections'] < 10) {
-                                    echo 'Medium Risk';
-                                } else {
-                                    echo 'High Risk';
-                                }
-                                ?>
-                            </td>
-                            <td><?php echo $scan['positive_detections'] . '/' . $scan['total_engines']; ?></td>
-                            <td>
-                                <?php if (!empty($scan['permalink'])): ?>
-                                    <a href="<?php echo htmlspecialchars($scan['permalink']); ?>" target="_blank" class="scan-details-link">
-                                        View Report
-                                    </a>
-                                <?php else: ?>
-                                    Report Not Available
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
-        
-        <a href="dashboard.html" class="back-button">Back to Dashboard</a>
+        </div>
     </div>
     
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2025 TechTitans Security. All rights reserved.</p>
-    </footer>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 </body>
 </html>
