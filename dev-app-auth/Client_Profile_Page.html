@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Client Profile Page</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { max-width: 900px; margin: auto; }
+    h2 { color: #333; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, textarea, select { width: 100%; padding: 8px; margin-top: 5px; }
+    .readonly { background-color: #f0f0f0; }
+    .status-badge {
+      padding: 5px 10px;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+    }
+    .safe { background-color: green; }
+    .malicious { background-color: red; }
+    .pending { background-color: orange; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+    .button { margin-top: 15px; padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Client Profile</h2>
+    <form id="profileForm">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="John Doe" />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="johndoe@example.com" />
+
+      <label for="bio">Bio</label>
+      <textarea id="bio" name="bio">Cybersecurity Enthusiast</textarea>
+
+      <label for="role">Role</label>
+      <input type="text" id="role" class="readonly" value="Client" readonly />
+
+      <button class="button" type="submit">Save Changes</button>
+    </form>
+
+    <h3>Scan Summary</h3>
+    <p><strong>This Week:</strong> 10 scans</p>
+
+    <label for="limitSelect">Scan History Records</label>
+    <select id="limitSelect">
+      <option value="10" selected>10</option>
+      <option value="20">20</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+    </select>
+
+    <h3>Scan History</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Scan ID</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>#1001</td>
+          <td>2025-07-30</td>
+          <td><span class="status-badge safe">Safe</span></td>
+          <td><a href="#">View</a></td>
+        </tr>
+        <tr>
+          <td>#1000</td>
+          <td>2025-07-29</td>
+          <td><span class="status-badge malicious">Malicious</span></td>
+          <td><a href="#">View</a></td>
+        </tr>
+        <tr>
+          <td>#999</td>
+          <td>2025-07-28</td>
+          <td><span class="status-badge pending">Pending</span></td>
+          <td><a href="#">View</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
