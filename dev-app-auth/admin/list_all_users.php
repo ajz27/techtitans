@@ -192,26 +192,28 @@ function getRoleBadgeClass($roleId) {
             color: #ffd700 !important;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-
         .card {
             border-radius: 1rem;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
             padding: 2rem;
             margin-bottom: 2rem;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.9);
         }
 
-        .admin-header {
-            background: linear-gradient(135deg, #dc3545, #ff6b7a);
-            color: white;
-            border-radius: 1rem 1rem 0 0;
-            margin: -2rem -2rem 2rem -2rem;
-            padding: 2rem;
+        .welcome-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 5px solid #dc3545;
+        }
+
+        .stats-card {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .table-card {
+            background: rgba(255, 255, 255, 0.9);
         }
 
         .table {
@@ -291,29 +293,13 @@ function getRoleBadgeClass($roleId) {
             color: #6c757d;
         }
 
-        .back-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn-admin {
-            background: linear-gradient(135deg, #dc3545, #ff6b7a);
-            border: none;
-            color: white;
+        .btn-primary {
             font-weight: 500;
+            transition: background-color 0.3s ease;
         }
 
-        .btn-admin:hover {
-            background: linear-gradient(135deg, #c82333, #e55a6a);
-            color: white;
-        }
-
-        .stats-row {
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
+        .btn-primary:hover {
+            background-color: #0056b3;
         }
 
         .stat-item {
@@ -340,24 +326,9 @@ function getRoleBadgeClass($roleId) {
         }
 
         .role-select:focus {
-            border-color: #80bdff;
-            outline: 0;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
-
-        .btn-update-role {
-            background-color: #007bff;
             border-color: #007bff;
-            color: white;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-        }
-
-        .btn-update-role:hover {
-            background-color: #0056b3;
-            border-color: #0056b3;
-            color: white;
+            box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
+            outline: 0;
         }
 
         .alert {
@@ -381,6 +352,14 @@ function getRoleBadgeClass($roleId) {
         .role-management-cell {
             min-width: 200px;
         }
+
+        .admin-section {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(255, 107, 122, 0.1));
+            border: 2px solid rgba(220, 53, 69, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -403,62 +382,65 @@ function getRoleBadgeClass($roleId) {
     </nav>
 
     <!-- Main Content -->
-    <div class="container">
-        <div class="card">
-            <div class="admin-header">
-                <h1 class="mb-2">👥 User Management</h1>
-                <p class="mb-0">Welcome, <?php echo htmlspecialchars($username); ?>! Manage all registered users from this admin panel.</p>
+    <div class="container mt-4">
+        <!-- Welcome Card -->
+        <div class="card welcome-card">
+            <h1 class="mb-2">👥 User Management</h1>
+            <p class="mb-0">Welcome, <?php echo htmlspecialchars($username); ?>! Manage all registered users from this admin panel.</p>
+        </div>
+
+        <!-- Update Message -->
+        <?php if (!empty($updateMessage)): ?>
+            <div class="alert alert-<?php echo $updateStatus === 'success' ? 'success' : 'danger'; ?>" role="alert">
+                <?php echo htmlspecialchars($updateMessage); ?>
             </div>
+        <?php endif; ?>
 
-            <!-- Update Message -->
-            <?php if (!empty($updateMessage)): ?>
-                <div class="alert alert-<?php echo $updateStatus === 'success' ? 'success' : 'danger'; ?>" role="alert">
-                    <?php echo htmlspecialchars($updateMessage); ?>
-                </div>
-            <?php endif; ?>
-
-            <!-- Statistics -->
-            <?php if (!empty($users)): ?>
-                <?php
-                $totalUsers = count($users);
-                $adminCount = count(array_filter($users, function($user) { return $user['role_id'] == 1; }));
-                $managerCount = count(array_filter($users, function($user) { return $user['role_id'] == 2; }));
-                $regularUsers = count(array_filter($users, function($user) { return $user['role_id'] == 3; }));
-                $unassignedUsers = count(array_filter($users, function($user) { return empty($user['role_id']); }));
-                ?>
-                <div class="stats-row">
-                    <div class="row">
-                        <div class="col-md-2 stat-item">
-                            <div class="stat-number"><?php echo $totalUsers; ?></div>
-                            <div class="stat-label">Total Users</div>
-                        </div>
-                        <div class="col-md-2 stat-item">
-                            <div class="stat-number"><?php echo $adminCount; ?></div>
-                            <div class="stat-label">Admins</div>
-                        </div>
-                        <div class="col-md-2 stat-item">
-                            <div class="stat-number"><?php echo $managerCount; ?></div>
-                            <div class="stat-label">Managers</div>
-                        </div>
-                        <div class="col-md-2 stat-item">
-                            <div class="stat-number"><?php echo $regularUsers; ?></div>
-                            <div class="stat-label">Regular Users</div>
-                        </div>
-                        <div class="col-md-2 stat-item">
-                            <div class="stat-number"><?php echo $unassignedUsers; ?></div>
-                            <div class="stat-label">Unassigned</div>
-                        </div>
+        <!-- Statistics -->
+        <?php if (!empty($users)): ?>
+            <?php
+            $totalUsers = count($users);
+            $adminCount = count(array_filter($users, function($user) { return $user['role_id'] == 1; }));
+            $managerCount = count(array_filter($users, function($user) { return $user['role_id'] == 2; }));
+            $regularUsers = count(array_filter($users, function($user) { return $user['role_id'] == 3; }));
+            $unassignedUsers = count(array_filter($users, function($user) { return empty($user['role_id']); }));
+            ?>
+            <div class="card stats-card">
+                <div class="row">
+                    <div class="col-md-2 stat-item">
+                        <div class="stat-number"><?php echo $totalUsers; ?></div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <div class="stat-number"><?php echo $adminCount; ?></div>
+                        <div class="stat-label">Admins</div>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <div class="stat-number"><?php echo $managerCount; ?></div>
+                        <div class="stat-label">Managers</div>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <div class="stat-number"><?php echo $regularUsers; ?></div>
+                        <div class="stat-label">Regular Users</div>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <div class="stat-number"><?php echo $unassignedUsers; ?></div>
+                        <div class="stat-label">Unassigned</div>
                     </div>
                 </div>
-            <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
-            <?php if (empty($users)): ?>
+        <?php if (empty($users)): ?>
+            <div class="card">
                 <div class="no-users">
                     <h4>No Users Found</h4>
                     <p>There are no registered users in the system.</p>
                 </div>
-            <?php else: ?>
-                <!-- Users Table -->
+            </div>
+        <?php else: ?>
+            <!-- Users Table -->
+            <div class="card table-card">
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
@@ -534,13 +516,15 @@ function getRoleBadgeClass($roleId) {
                         </tbody>
                     </table>
                 </div>
-            <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
-            <!-- Action Buttons -->
-            <div class="back-buttons mt-4">
+        <!-- Action Buttons -->
+        <div class="card">
+            <div class="d-flex flex-wrap gap-2">
                 <a href="../dashboard.php" class="btn btn-outline-secondary">Back to Dashboard</a>
                 <a href="../view_scan_history.php" class="btn btn-outline-primary">View Scan History</a>
-                <a href="../profile.php" class="btn btn-admin">User Profile</a>
+                <a href="../profile.php" class="btn btn-primary">User Profile</a>
             </div>
         </div>
     </div>
