@@ -263,6 +263,138 @@ function getUserRole($userId) {
     return $result;
 }
 
+function getAllRoles() {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return false;
+    }
+    
+    $stmt = $conn->prepare("SELECT id, name, description FROM Roles WHERE is_active = 1 ORDER BY id");
+    
+    if (!$stmt) {
+        $conn->close();
+        return false;
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
+function updateUserRole($userId, $newRoleId, $adminUserId) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return array("success" => false, "message" => "database connection failed");
+    }
+    
+    // Check if the admin user has admin privileges (role_id = 1)
+    $adminCheck = $conn->prepare("
+        SELECT ur.role_id 
+        FROM UserRoles ur 
+        WHERE ur.user_id = ? AND ur.role_id = 1 AND ur.is_active = 1
+    ");
+    
+    if (!$adminCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $adminCheck->bind_param("i", $adminUserId);
+    $adminCheck->execute();
+    $adminResult = $adminCheck->get_result();
+    
+    if ($adminResult->num_rows === 0) {
+        $adminCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "insufficient privileges");
+    }
+    $adminCheck->close();
+    
+    // Check if the target user exists
+    $userCheck = $conn->prepare("SELECT id FROM Users WHERE id = ?");
+    if (!$userCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $userCheck->bind_param("i", $userId);
+    $userCheck->execute();
+    $userResult = $userCheck->get_result();
+    
+    if ($userResult->num_rows === 0) {
+        $userCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "user not found");
+    }
+    $userCheck->close();
+    
+    // Check if the role exists
+    $roleCheck = $conn->prepare("SELECT id FROM Roles WHERE id = ? AND is_active = 1");
+    if (!$roleCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $roleCheck->bind_param("i", $newRoleId);
+    $roleCheck->execute();
+    $roleResult = $roleCheck->get_result();
+    
+    if ($roleResult->num_rows === 0) {
+        $roleCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "invalid role");
+    }
+    $roleCheck->close();
+    
+    // Begin transaction
+    $conn->begin_transaction();
+    
+    try {
+        // Deactivate current role assignments for this user
+        $deactivateStmt = $conn->prepare("UPDATE UserRoles SET is_active = 0 WHERE user_id = ?");
+        $deactivateStmt->bind_param("i", $userId);
+        $deactivateStmt->execute();
+        $deactivateStmt->close();
+        
+        // Check if this user-role combination already exists
+        $existingStmt = $conn->prepare("SELECT id FROM UserRoles WHERE user_id = ? AND role_id = ?");
+        $existingStmt->bind_param("ii", $userId, $newRoleId);
+        $existingStmt->execute();
+        $existingResult = $existingStmt->get_result();
+        
+        if ($existingResult->num_rows > 0) {
+            // Reactivate existing record
+            $existingStmt->close();
+            $reactivateStmt = $conn->prepare("UPDATE UserRoles SET is_active = 1 WHERE user_id = ? AND role_id = ?");
+            $reactivateStmt->bind_param("ii", $userId, $newRoleId);
+            $reactivateStmt->execute();
+            $reactivateStmt->close();
+        } else {
+            // Create new role assignment
+            $existingStmt->close();
+            $insertStmt = $conn->prepare("INSERT INTO UserRoles (user_id, role_id, is_active) VALUES (?, ?, 1)");
+            $insertStmt->bind_param("ii", $userId, $newRoleId);
+            $insertStmt->execute();
+            $insertStmt->close();
+        }
+        
+        $conn->commit();
+        return array("success" => true, "message" => "user role updated successfully");
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        $conn->close();
+        return array("success" => false, "message" => "failed to update user role: " . $e->getMessage());
+    }
+    
+    $conn->close();
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -393,6 +525,20 @@ function request_processor($request)
             } else {
                 return array("success" => false, "message" => "failed to retrieve user role");
             }
+
+        case 'get_all_roles':
+            $roles = getAllRoles();
+            if ($roles !== false) {
+                return array("success" => true, "roles" => $roles);
+            } else {
+                return array("success" => false, "message" => "failed to retrieve roles");
+            }
+
+        case 'update_user_role':
+            if (!isset($request['user_id']) || !isset($request['new_role_id']) || !isset($request['admin_user_id'])) {
+                return array("success" => false, "message" => "missing user_id, new_role_id, or admin_user_id");
+            }
+            return updateUserRole($request['user_id'], $request['new_role_id'], $request['admin_user_id']);
     }
 
 }

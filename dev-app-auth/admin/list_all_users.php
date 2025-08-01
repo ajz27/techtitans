@@ -50,6 +50,31 @@ if (!isUserAdmin($userId)) {
     exit();
 }
 
+// Handle role update request
+$updateMessage = '';
+$updateStatus = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_role') {
+    if (isset($_POST['target_user_id']) && isset($_POST['new_role_id'])) {
+        $targetUserId = intval($_POST['target_user_id']);
+        $newRoleId = intval($_POST['new_role_id']);
+        
+        // Prevent admin from changing their own role
+        if ($targetUserId === $userId) {
+            $updateMessage = 'You cannot change your own role.';
+            $updateStatus = 'error';
+        } else {
+            $result = updateUserRole($targetUserId, $newRoleId, $userId);
+            if (isset($result['success']) && $result['success']) {
+                $updateMessage = 'User role updated successfully.';
+                $updateStatus = 'success';
+            } else {
+                $updateMessage = isset($result['message']) ? $result['message'] : 'Failed to update user role.';
+                $updateStatus = 'error';
+            }
+        }
+    }
+}
+
 // Function to get all users
 function getAllUsers() {
     $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
@@ -72,8 +97,52 @@ function getAllUsers() {
     return [];
 }
 
-// Get all users
+// Function to get all available roles
+function getAllRoles() {
+    $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
+    
+    $request = array(
+        'type' => 'get_all_roles'
+    );
+    
+    $response = $client->send_request($request);
+    
+    // Convert stdClass to array if needed
+    if (is_object($response)) {
+        $response = json_decode(json_encode($response), true);
+    }
+    
+    if (isset($response['success']) && $response['success'] && isset($response['roles'])) {
+        return $response['roles'];
+    }
+    
+    return [];
+}
+
+// Function to update user role
+function updateUserRole($targetUserId, $newRoleId, $adminUserId) {
+    $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
+    
+    $request = array(
+        'type' => 'update_user_role',
+        'user_id' => $targetUserId,
+        'new_role_id' => $newRoleId,
+        'admin_user_id' => $adminUserId
+    );
+    
+    $response = $client->send_request($request);
+    
+    // Convert stdClass to array if needed
+    if (is_object($response)) {
+        $response = json_decode(json_encode($response), true);
+    }
+    
+    return $response;
+}
+
+// Get all users and roles
 $users = getAllUsers();
+$roles = getAllRoles();
 
 // Function to format date
 function formatDate($dateString) {
@@ -87,6 +156,7 @@ function getRoleBadgeClass($roleId) {
     switch ($roleId) {
         case 1: return 'badge-admin';
         case 2: return 'badge-manager';
+        case 3: return 'badge-user';
         default: return 'badge-user';
     }
 }
@@ -260,6 +330,57 @@ function getRoleBadgeClass($roleId) {
             color: #6c757d;
             font-size: 0.9em;
         }
+
+        .role-select {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            background-color: white;
+        }
+
+        .role-select:focus {
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .btn-update-role {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        .btn-update-role:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+            color: white;
+        }
+
+        .alert {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .role-management-cell {
+            min-width: 200px;
+        }
     </style>
 </head>
 <body>
@@ -289,31 +410,43 @@ function getRoleBadgeClass($roleId) {
                 <p class="mb-0">Welcome, <?php echo htmlspecialchars($username); ?>! Manage all registered users from this admin panel.</p>
             </div>
 
+            <!-- Update Message -->
+            <?php if (!empty($updateMessage)): ?>
+                <div class="alert alert-<?php echo $updateStatus === 'success' ? 'success' : 'danger'; ?>" role="alert">
+                    <?php echo htmlspecialchars($updateMessage); ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Statistics -->
             <?php if (!empty($users)): ?>
                 <?php
                 $totalUsers = count($users);
                 $adminCount = count(array_filter($users, function($user) { return $user['role_id'] == 1; }));
                 $managerCount = count(array_filter($users, function($user) { return $user['role_id'] == 2; }));
-                $regularUsers = $totalUsers - $adminCount - $managerCount;
+                $regularUsers = count(array_filter($users, function($user) { return $user['role_id'] == 3; }));
+                $unassignedUsers = count(array_filter($users, function($user) { return empty($user['role_id']); }));
                 ?>
                 <div class="stats-row">
                     <div class="row">
-                        <div class="col-md-3 stat-item">
+                        <div class="col-md-2 stat-item">
                             <div class="stat-number"><?php echo $totalUsers; ?></div>
                             <div class="stat-label">Total Users</div>
                         </div>
-                        <div class="col-md-3 stat-item">
+                        <div class="col-md-2 stat-item">
                             <div class="stat-number"><?php echo $adminCount; ?></div>
                             <div class="stat-label">Admins</div>
                         </div>
-                        <div class="col-md-3 stat-item">
+                        <div class="col-md-2 stat-item">
                             <div class="stat-number"><?php echo $managerCount; ?></div>
                             <div class="stat-label">Managers</div>
                         </div>
-                        <div class="col-md-3 stat-item">
+                        <div class="col-md-2 stat-item">
                             <div class="stat-number"><?php echo $regularUsers; ?></div>
                             <div class="stat-label">Regular Users</div>
+                        </div>
+                        <div class="col-md-2 stat-item">
+                            <div class="stat-number"><?php echo $unassignedUsers; ?></div>
+                            <div class="stat-label">Unassigned</div>
                         </div>
                     </div>
                 </div>
@@ -336,6 +469,7 @@ function getRoleBadgeClass($roleId) {
                                 <th>Role</th>
                                 <th>Registered</th>
                                 <th>Last Modified</th>
+                                <th>Manage Role</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -362,10 +496,10 @@ function getRoleBadgeClass($roleId) {
                                     <td>
                                         <span class="<?php echo getRoleBadgeClass($user['role_id']); ?>">
                                             <?php 
-                                            if ($user['role_name']) {
+                                            if (!empty($user['role_name'])) {
                                                 echo htmlspecialchars(ucfirst($user['role_name']));
                                             } else {
-                                                echo 'User';
+                                                echo 'No Role Assigned';
                                             }
                                             ?>
                                         </span>
@@ -375,6 +509,25 @@ function getRoleBadgeClass($roleId) {
                                     </td>
                                     <td>
                                         <span class="date-text"><?php echo formatDate($user['modified']); ?></span>
+                                    </td>
+                                    <td class="role-management-cell">
+                                        <?php if ($user['id'] == $userId): ?>
+                                            <small class="text-muted">Your Account</small>
+                                        <?php else: ?>
+                                            <form method="POST" style="display: inline-block;" class="role-update-form">
+                                                <input type="hidden" name="action" value="update_role">
+                                                <input type="hidden" name="target_user_id" value="<?php echo $user['id']; ?>">
+                                                <select name="new_role_id" class="role-select">
+                                                    <option value="">Select Role</option>
+                                                    <?php foreach ($roles as $role): ?>
+                                                        <option value="<?php echo $role['id']; ?>" 
+                                                            <?php echo (isset($user['role_id']) && $user['role_id'] == $role['id']) ? 'selected' : ''; ?>>
+                                                            <?php echo htmlspecialchars(ucfirst($role['name'])); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </form>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -394,5 +547,32 @@ function getRoleBadgeClass($roleId) {
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Role Management JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add confirmation for role changes
+            const roleSelects = document.querySelectorAll('.role-select');
+            
+            roleSelects.forEach(function(select) {
+                const originalValue = select.value;
+                
+                select.addEventListener('change', function() {
+                    if (this.value && this.value !== originalValue) {
+                        const userName = this.closest('tr').querySelector('.username').textContent.trim();
+                        const newRoleName = this.options[this.selectedIndex].text;
+                        
+                        if (confirm(`Are you sure you want to change ${userName}'s role to ${newRoleName}?`)) {
+                            // Submit the form
+                            this.closest('form').submit();
+                        } else {
+                            // Reset to original value
+                            this.value = originalValue;
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
