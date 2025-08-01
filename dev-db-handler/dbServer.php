@@ -204,6 +204,35 @@ function getUserUrlScans($userId, $limit = 50) {
     return $result;
 }
 
+function getAllUrlScans($limit = 100, $offset = 0) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return false;
+    }
+    
+    $stmt = $conn->prepare("
+        SELECT us.*, u.username, u.email
+        FROM url_scans us
+        LEFT JOIN Users u ON us.user_id = u.id
+        ORDER BY us.scan_timestamp DESC 
+        LIMIT ? OFFSET ?
+    ");
+    
+    if (!$stmt) {
+        $conn->close();
+        return false;
+    }
+    
+    $stmt->bind_param("ii", $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
 function getAllUsers() {
     $conn = getDBConnection();
     
@@ -615,6 +644,16 @@ function request_processor($request)
             $limit = $request['limit'] ?? 50;
             $scans = getUserUrlScans($request['user_id'], $limit);
             return array("success" => true, "scans" => $scans);
+
+        case 'get_all_url_scans':
+            $limit = $request['limit'] ?? 100;
+            $offset = $request['offset'] ?? 0;
+            $scans = getAllUrlScans($limit, $offset);
+            if ($scans !== false) {
+                return array("success" => true, "scans" => $scans);
+            } else {
+                return array("success" => false, "message" => "failed to retrieve scans");
+            }
 
         case 'get_all_users':
             $users = getAllUsers();
