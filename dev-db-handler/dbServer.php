@@ -395,6 +395,115 @@ function updateUserRole($userId, $newRoleId, $adminUserId) {
     $conn->close();
 }
 
+function deleteUser($userId, $adminUserId) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return array("success" => false, "message" => "database connection failed");
+    }
+    
+    // Check if the admin user has admin privileges (role_id = 1)
+    $adminCheck = $conn->prepare("
+        SELECT ur.role_id 
+        FROM UserRoles ur 
+        WHERE ur.user_id = ? AND ur.role_id = 1 AND ur.is_active = 1
+    ");
+    
+    if (!$adminCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $adminCheck->bind_param("i", $adminUserId);
+    $adminCheck->execute();
+    $adminResult = $adminCheck->get_result();
+    
+    if ($adminResult->num_rows === 0) {
+        $adminCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "insufficient privileges - admin access required");
+    }
+    $adminCheck->close();
+    
+    // Prevent admin from deleting themselves
+    if ($userId === $adminUserId) {
+        $conn->close();
+        return array("success" => false, "message" => "cannot delete your own account");
+    }
+    
+    // Check if the target user exists
+    $userCheck = $conn->prepare("SELECT id, username, email FROM Users WHERE id = ?");
+    if (!$userCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $userCheck->bind_param("i", $userId);
+    $userCheck->execute();
+    $userResult = $userCheck->get_result();
+    
+    if ($userResult->num_rows === 0) {
+        $userCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "user not found");
+    }
+    
+    $userData = $userResult->fetch_assoc();
+    $userCheck->close();
+    
+    // Begin transaction
+    $conn->begin_transaction();
+    
+    try {
+        // First, delete all UserRoles entries for this user
+        $deleteRolesStmt = $conn->prepare("DELETE FROM UserRoles WHERE user_id = ?");
+        if (!$deleteRolesStmt) {
+            throw new Exception("Failed to prepare UserRoles deletion query");
+        }
+        $deleteRolesStmt->bind_param("i", $userId);
+        $deleteRolesStmt->execute();
+        $deleteRolesStmt->close();
+        
+        // Delete any URL scans for this user (if url_scans table exists)
+        $deleteScansStmt = $conn->prepare("DELETE FROM url_scans WHERE user_id = ?");
+        if ($deleteScansStmt) {
+            $deleteScansStmt->bind_param("i", $userId);
+            $deleteScansStmt->execute();
+            $deleteScansStmt->close();
+        }
+        
+        // Finally, delete the user from Users table
+        $deleteUserStmt = $conn->prepare("DELETE FROM Users WHERE id = ?");
+        if (!$deleteUserStmt) {
+            throw new Exception("Failed to prepare Users deletion query");
+        }
+        $deleteUserStmt->bind_param("i", $userId);
+        $deleteUserStmt->execute();
+        $deleteUserStmt->close();
+        
+        $conn->commit();
+        echo "User deleted successfully: ID={$userId}, username={$userData['username']}, email={$userData['email']}\n";
+        
+        return array(
+            "success" => true, 
+            "message" => "User '{$userData['username']}' has been successfully deleted from the system",
+            "deleted_user" => array(
+                "id" => $userId,
+                "username" => $userData['username'],
+                "email" => $userData['email']
+            )
+        );
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        $conn->close();
+        echo "Failed to delete user: " . $e->getMessage() . "\n";
+        return array("success" => false, "message" => "failed to delete user: " . $e->getMessage());
+    }
+    
+    $conn->close();
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -539,6 +648,15 @@ function request_processor($request)
                 return array("success" => false, "message" => "missing user_id, new_role_id, or admin_user_id");
             }
             return updateUserRole($request['user_id'], $request['new_role_id'], $request['admin_user_id']);
+
+        case 'delete_user':
+            if (!isset($request['user_id']) || !isset($request['admin_user_id'])) {
+                return array("success" => false, "message" => "missing user_id or admin_user_id");
+            }
+            return deleteUser($request['user_id'], $request['admin_user_id']);
+
+        default:
+            return array("success" => false, "message" => "unknown request type: " . $request['type']);
     }
 
 }

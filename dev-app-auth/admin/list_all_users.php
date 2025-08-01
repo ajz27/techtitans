@@ -75,6 +75,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle user deletion request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_user') {
+    if (isset($_POST['target_user_id'])) {
+        $targetUserId = intval($_POST['target_user_id']);
+        
+        // Prevent admin from deleting themselves
+        if ($targetUserId === $userId) {
+            $updateMessage = 'You cannot delete your own account.';
+            $updateStatus = 'error';
+        } else {
+            $result = deleteUser($targetUserId, $userId);
+            if (isset($result['success']) && $result['success']) {
+                $updateMessage = $result['message'];
+                $updateStatus = 'success';
+            } else {
+                $updateMessage = isset($result['message']) ? $result['message'] : 'Failed to delete user.';
+                $updateStatus = 'error';
+            }
+        }
+    }
+}
+
 // Function to get all users
 function getAllUsers() {
     $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
@@ -127,6 +149,26 @@ function updateUserRole($targetUserId, $newRoleId, $adminUserId) {
         'type' => 'update_user_role',
         'user_id' => $targetUserId,
         'new_role_id' => $newRoleId,
+        'admin_user_id' => $adminUserId
+    );
+    
+    $response = $client->send_request($request);
+    
+    // Convert stdClass to array if needed
+    if (is_object($response)) {
+        $response = json_decode(json_encode($response), true);
+    }
+    
+    return $response;
+}
+
+// Function to delete user
+function deleteUser($targetUserId, $adminUserId) {
+    $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
+    
+    $request = array(
+        'type' => 'delete_user',
+        'user_id' => $targetUserId,
         'admin_user_id' => $adminUserId
     );
     
@@ -360,6 +402,33 @@ function getRoleBadgeClass($roleId) {
             padding: 1rem;
             margin-top: 1rem;
         }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75em;
+            margin-left: 0.5rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+            color: white;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .delete-form {
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -452,6 +521,7 @@ function getRoleBadgeClass($roleId) {
                                 <th>Registered</th>
                                 <th>Last Modified</th>
                                 <th>Manage Role</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -511,6 +581,19 @@ function getRoleBadgeClass($roleId) {
                                             </form>
                                         <?php endif; ?>
                                     </td>
+                                    <td>
+                                        <?php if ($user['id'] == $userId): ?>
+                                            <small class="text-muted">Your Account</small>
+                                        <?php else: ?>
+                                            <div class="action-buttons">
+                                                <form method="POST" class="delete-form" onsubmit="return confirmDelete('<?php echo htmlspecialchars($user['username'] ?: explode('@', $user['email'])[0]); ?>')">
+                                                    <input type="hidden" name="action" value="delete_user">
+                                                    <input type="hidden" name="target_user_id" value="<?php echo $user['id']; ?>">
+                                                    <button type="submit" class="btn-delete">Delete User</button>
+                                                </form>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -557,6 +640,11 @@ function getRoleBadgeClass($roleId) {
                 });
             });
         });
+
+        // Function to confirm user deletion
+        function confirmDelete(username) {
+            return confirm(`⚠️ WARNING: Are you sure you want to permanently delete user "${username}"?\n\nThis action will:\n• Delete the user account\n• Remove all user roles\n• Delete all associated data\n\nThis action CANNOT be undone!`);
+        }
     </script>
 </body>
 </html>
