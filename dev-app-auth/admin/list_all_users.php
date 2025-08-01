@@ -46,7 +46,7 @@ function isUserAdmin($userId) {
 // Check if current user is admin
 if (!isUserAdmin($userId)) {
     // Redirect non-admin users
-    header("Location: ../dashboard.html");
+    header("Location: ../dashboard.php");
     exit();
 }
 
@@ -272,7 +272,7 @@ function getRoleBadgeClass($roleId) {
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="../dashboard.html">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="../dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="../profile.php">Profile</a></li>
                     <li class="nav-item"><a class="nav-link active" href="list_all_users.php">All Users</a></li>
                     <li class="nav-item"><a class="nav-link text-danger" href="../logout.php">Logout</a></li>
@@ -345,7 +345,16 @@ function getRoleBadgeClass($roleId) {
                                         <span class="user-id"><?php echo htmlspecialchars($user['id']); ?></span>
                                     </td>
                                     <td>
-                                        <span class="username"><?php echo htmlspecialchars($user['username']); ?></span>
+                                        <span class="username">
+                                            <?php 
+                                            // Display username if available, otherwise use email prefix
+                                            if (!empty($user['username'])) {
+                                                echo htmlspecialchars($user['username']);
+                                            } else {
+                                                echo htmlspecialchars(explode('@', $user['email'])[0]);
+                                            }
+                                            ?>
+                                        </span>
                                     </td>
                                     <td>
                                         <span class="email"><?php echo htmlspecialchars($user['email']); ?></span>
@@ -376,7 +385,7 @@ function getRoleBadgeClass($roleId) {
 
             <!-- Action Buttons -->
             <div class="back-buttons mt-4">
-                <a href="../dashboard.html" class="btn btn-outline-secondary">Back to Dashboard</a>
+                <a href="../dashboard.php" class="btn btn-outline-secondary">Back to Dashboard</a>
                 <a href="../view_scan_history.php" class="btn btn-outline-primary">View Scan History</a>
                 <a href="../profile.php" class="btn btn-admin">User Profile</a>
             </div>

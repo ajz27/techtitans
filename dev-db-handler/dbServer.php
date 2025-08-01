@@ -211,11 +211,13 @@ function getAllUsers() {
         return false;
     }
     
+    // Updated query to use UserRoles table since Users table doesn't have role_id
     $stmt = $conn->prepare("
-        SELECT u.id, u.username, u.email, u.created, u.modified, u.role_id,
-               r.name as role_name, r.description as role_description
+        SELECT u.id, u.username, u.email, u.created, u.modified, 
+               ur.role_id, r.name as role_name, r.description as role_description
         FROM Users u
-        LEFT JOIN Roles r ON u.role_id = r.id
+        LEFT JOIN UserRoles ur ON u.id = ur.user_id AND ur.is_active = 1
+        LEFT JOIN Roles r ON ur.role_id = r.id AND r.is_active = 1
         ORDER BY u.created DESC
     ");
     
@@ -239,11 +241,12 @@ function getUserRole($userId) {
         return false;
     }
     
+    // Query the UserRoles table since Users table doesn't have role_id column
     $stmt = $conn->prepare("
-        SELECT u.role_id, r.name as role_name 
-        FROM Users u 
-        LEFT JOIN Roles r ON u.role_id = r.id 
-        WHERE u.id = ?
+        SELECT ur.role_id, r.name as role_name 
+        FROM UserRoles ur
+        LEFT JOIN Roles r ON ur.role_id = r.id 
+        WHERE ur.user_id = ? AND ur.is_active = 1 AND r.is_active = 1
     ");
     
     if (!$stmt) {
