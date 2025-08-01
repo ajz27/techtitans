@@ -194,7 +194,7 @@ function formatDate($dateString) {
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
-                    <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="view_scan_history.php">Scan History</a></li>
                     <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
                 </ul>
@@ -280,7 +280,7 @@ function formatDate($dateString) {
                 <?php endif; ?>
                 
                 <div class="text-center mt-4">
-                    <a href="dashboard.html" class="btn btn-outline-secondary">Back to Dashboard</a>
+                    <a href="dashboard.php" class="btn btn-outline-secondary">Back to Dashboard</a>
                 </div>
             </div>
         </div>

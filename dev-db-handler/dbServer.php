@@ -204,6 +204,62 @@ function getUserUrlScans($userId, $limit = 50) {
     return $result;
 }
 
+function getAllUsers() {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return false;
+    }
+    
+    $stmt = $conn->prepare("
+        SELECT u.id, u.username, u.email, u.created, u.modified, u.role_id,
+               r.name as role_name, r.description as role_description
+        FROM Users u
+        LEFT JOIN Roles r ON u.role_id = r.id
+        ORDER BY u.created DESC
+    ");
+    
+    if (!$stmt) {
+        $conn->close();
+        return false;
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
+function getUserRole($userId) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return false;
+    }
+    
+    $stmt = $conn->prepare("
+        SELECT u.role_id, r.name as role_name 
+        FROM Users u 
+        LEFT JOIN Roles r ON u.role_id = r.id 
+        WHERE u.id = ?
+    ");
+    
+    if (!$stmt) {
+        $conn->close();
+        return false;
+    }
+    
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -315,6 +371,25 @@ function request_processor($request)
             $limit = $request['limit'] ?? 50;
             $scans = getUserUrlScans($request['user_id'], $limit);
             return array("success" => true, "scans" => $scans);
+
+        case 'get_all_users':
+            $users = getAllUsers();
+            if ($users !== false) {
+                return array("success" => true, "users" => $users);
+            } else {
+                return array("success" => false, "message" => "failed to retrieve users");
+            }
+
+        case 'get_user_role':
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $role = getUserRole($request['user_id']);
+            if ($role !== false) {
+                return array("success" => true, "role" => $role);
+            } else {
+                return array("success" => false, "message" => "failed to retrieve user role");
+            }
     }
 
 }
