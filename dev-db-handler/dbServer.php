@@ -212,9 +212,11 @@ function getAllUrlScans($limit = 100, $offset = 0) {
     }
     
     $stmt = $conn->prepare("
-        SELECT us.*, u.username, u.email
+        SELECT us.*, u.username, u.email, 
+               reviewer.username as reviewer_username
         FROM url_scans us
         LEFT JOIN Users u ON us.user_id = u.id
+        LEFT JOIN Users reviewer ON us.reviewed_by = reviewer.id
         ORDER BY us.scan_timestamp DESC 
         LIMIT ? OFFSET ?
     ");
@@ -533,6 +535,87 @@ function deleteUser($userId, $adminUserId) {
     $conn->close();
 }
 
+function updateScanReview($scanId, $reviewStatus, $reviewNotes, $reviewerId) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return array("success" => false, "message" => "database connection failed");
+    }
+    
+    // Check if the reviewer has manager or admin privileges
+    $roleCheck = $conn->prepare("
+        SELECT ur.role_id 
+        FROM UserRoles ur 
+        WHERE ur.user_id = ? AND ur.role_id IN (1, 2) AND ur.is_active = 1
+    ");
+    
+    if (!$roleCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $roleCheck->bind_param("i", $reviewerId);
+    $roleCheck->execute();
+    $roleResult = $roleCheck->get_result();
+    
+    if ($roleResult->num_rows === 0) {
+        $roleCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "insufficient privileges - admin or manager access required");
+    }
+    $roleCheck->close();
+    
+    // Validate review status
+    $allowedStatuses = ['pending', 'approved', 'flagged', 'archived'];
+    if (!in_array($reviewStatus, $allowedStatuses)) {
+        $conn->close();
+        return array("success" => false, "message" => "invalid review status");
+    }
+    
+    // Check if scan exists
+    $scanCheck = $conn->prepare("SELECT id FROM url_scans WHERE id = ?");
+    if (!$scanCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $scanCheck->bind_param("i", $scanId);
+    $scanCheck->execute();
+    $scanResult = $scanCheck->get_result();
+    
+    if ($scanResult->num_rows === 0) {
+        $scanCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "scan not found");
+    }
+    $scanCheck->close();
+    
+    // Update the scan review fields
+    $updateStmt = $conn->prepare("
+        UPDATE url_scans 
+        SET review_status = ?, review_notes = ?, reviewed_by = ?, reviewed_at = NOW()
+        WHERE id = ?
+    ");
+    
+    if (!$updateStmt) {
+        $conn->close();
+        return array("success" => false, "message" => "failed to prepare update statement: " . $conn->error);
+    }
+    
+    $updateStmt->bind_param("ssii", $reviewStatus, $reviewNotes, $reviewerId, $scanId);
+    
+    if ($updateStmt->execute()) {
+        $updateStmt->close();
+        $conn->close();
+        return array("success" => true, "message" => "scan review updated successfully");
+    } else {
+        $error = $updateStmt->error;
+        $updateStmt->close();
+        $conn->close();
+        return array("success" => false, "message" => "failed to update scan review: " . $error);
+    }
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -693,6 +776,13 @@ function request_processor($request)
                 return array("success" => false, "message" => "missing user_id or admin_user_id");
             }
             return deleteUser($request['user_id'], $request['admin_user_id']);
+
+        case 'update_scan_review':
+            if (!isset($request['scan_id']) || !isset($request['review_status']) || !isset($request['reviewer_id'])) {
+                return array("success" => false, "message" => "missing scan_id, review_status, or reviewer_id");
+            }
+            $reviewNotes = $request['review_notes'] ?? '';
+            return updateScanReview($request['scan_id'], $request['review_status'], $reviewNotes, $request['reviewer_id']);
 
         default:
             return array("success" => false, "message" => "unknown request type: " . $request['type']);

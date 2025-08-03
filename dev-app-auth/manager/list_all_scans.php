@@ -10,6 +10,46 @@ require_once('../path.inc');
 require_once('../get_host_info.inc');
 require_once('../rabbitMQLib.inc');
 
+// Handle AJAX requests for updating scan review
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_review') {
+    header('Content-Type: application/json');
+    
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Not logged in']);
+        exit();
+    }
+    
+    $scanId = $_POST['scan_id'] ?? null;
+    $reviewStatus = $_POST['review_status'] ?? null;
+    $reviewNotes = $_POST['review_notes'] ?? '';
+    $reviewerId = $_SESSION['user_id'];
+    
+    if (!$scanId || !$reviewStatus) {
+        echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+        exit();
+    }
+    
+    $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
+    
+    $request = array(
+        'type' => 'update_scan_review',
+        'scan_id' => $scanId,
+        'review_status' => $reviewStatus,
+        'review_notes' => $reviewNotes,
+        'reviewer_id' => $reviewerId
+    );
+    
+    $response = $client->send_request($request);
+    
+    // Convert stdClass to array if needed
+    if (is_object($response)) {
+        $response = json_decode(json_encode($response), true);
+    }
+    
+    echo json_encode($response);
+    exit();
+}
+
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.html");
@@ -321,6 +361,67 @@ function getUserRoleBadge($userId) {
             color: #6c757d;
             font-size: 0.8em;
         }
+
+        .review-status {
+            font-size: 0.85em;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+
+        .review-status.pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .review-status.approved {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .review-status.flagged {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .review-status.archived {
+            background-color: #e2e3e5;
+            color: #41464b;
+            border: 1px solid #d1d3d4;
+        }
+
+        .review-form {
+            padding: 0.75rem;
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .review-form select, .review-form textarea {
+            font-size: 0.85em;
+        }
+
+        .review-form .btn {
+            font-size: 0.8em;
+            padding: 0.25rem 0.75rem;
+        }
+
+        .review-notes {
+            font-style: italic;
+            color: #6c757d;
+            font-size: 0.8em;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .reviewer-info {
+            font-size: 0.75em;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -387,13 +488,13 @@ function getUserRoleBadge($userId) {
                                 <div class="stat-item">
                                     <div class="stat-number">
                                         <?php 
-                                        $riskScans = array_filter($allScans, function($scan) {
-                                            return $scan['positive_detections'] > 0;
+                                        $approvedScans = array_filter($allScans, function($scan) {
+                                            return ($scan['review_status'] ?? 'pending') === 'approved';
                                         });
-                                        echo count($riskScans);
+                                        echo count($approvedScans);
                                         ?>
                                     </div>
-                                    <div class="stat-label">Flagged URLs</div>
+                                    <div class="stat-label">Approved</div>
                                 </div>
                             </div>
                         </div>
@@ -402,11 +503,13 @@ function getUserRoleBadge($userId) {
                                 <div class="stat-item">
                                     <div class="stat-number">
                                         <?php 
-                                        $uniqueUsers = array_unique(array_column($allScans, 'user_id'));
-                                        echo count($uniqueUsers);
+                                        $pendingScans = array_filter($allScans, function($scan) {
+                                            return ($scan['review_status'] ?? 'pending') === 'pending';
+                                        });
+                                        echo count($pendingScans);
                                         ?>
                                     </div>
-                                    <div class="stat-label">Unique Users</div>
+                                    <div class="stat-label">Pending Review</div>
                                 </div>
                             </div>
                         </div>
@@ -431,12 +534,15 @@ function getUserRoleBadge($userId) {
                                         <th>Scan Date</th>
                                         <th>Result</th>
                                         <th>Detection Ratio</th>
+                                        <th>Review Status</th>
+                                        <th>Review Actions</th>
                                         <th>Details</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($allScans as $scan): 
                                         $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
+                                        $reviewStatus = $scan['review_status'] ?? 'pending';
                                     ?>
                                         <tr>
                                             <td class="text-muted">#<?php echo htmlspecialchars($scan['id']); ?></td>
@@ -463,6 +569,48 @@ function getUserRoleBadge($userId) {
                                                 ?>
                                             </td>
                                             <td><?php echo $scan['positive_detections'] . '/' . $scan['total_engines']; ?></td>
+                                            <td>
+                                                <span class="review-status <?php echo $reviewStatus; ?>">
+                                                    <?php echo ucfirst($reviewStatus); ?>
+                                                </span>
+                                                <?php if (!empty($scan['review_notes'])): ?>
+                                                    <div class="review-notes" title="<?php echo htmlspecialchars($scan['review_notes']); ?>">
+                                                        <?php echo htmlspecialchars($scan['review_notes']); ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($scan['reviewed_by'])): ?>
+                                                    <div class="reviewer-info">
+                                                        Reviewed by: <?php echo htmlspecialchars($scan['reviewer_username'] ?? 'Unknown'); ?>
+                                                        <?php if (!empty($scan['reviewed_at'])): ?>
+                                                            <br>on <?php echo formatDate($scan['reviewed_at']); ?>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="toggleReviewForm(<?php echo $scan['id']; ?>)">
+                                                    Update Review
+                                                </button>
+                                                <div id="reviewForm<?php echo $scan['id']; ?>" class="review-form" style="display: none;">
+                                                    <form onsubmit="updateReview(event, <?php echo $scan['id']; ?>)">
+                                                        <div class="mb-2">
+                                                            <select class="form-select form-select-sm" name="review_status" required>
+                                                                <option value="pending" <?php echo $reviewStatus === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                                                <option value="approved" <?php echo $reviewStatus === 'approved' ? 'selected' : ''; ?>>Approved</option>
+                                                                <option value="flagged" <?php echo $reviewStatus === 'flagged' ? 'selected' : ''; ?>>Flagged</option>
+                                                                <option value="archived" <?php echo $reviewStatus === 'archived' ? 'selected' : ''; ?>>Archived</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <textarea class="form-control form-control-sm" name="review_notes" placeholder="Review notes (optional)" rows="2"><?php echo htmlspecialchars($scan['review_notes'] ?? ''); ?></textarea>
+                                                        </div>
+                                                        <div class="d-flex gap-1">
+                                                            <button type="submit" class="btn btn-success btn-sm">Save</button>
+                                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleReviewForm(<?php echo $scan['id']; ?>)">Cancel</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <?php if (!empty($scan['permalink'])): ?>
                                                     <a href="<?php echo htmlspecialchars($scan['permalink']); ?>" target="_blank" class="btn btn-sm btn-primary">
@@ -517,5 +665,56 @@ function getUserRoleBadge($userId) {
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function toggleReviewForm(scanId) {
+            const form = document.getElementById('reviewForm' + scanId);
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+            } else {
+                form.style.display = 'none';
+            }
+        }
+
+        function updateReview(event, scanId) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            formData.append('action', 'update_review');
+            formData.append('scan_id', scanId);
+
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Saving...';
+            submitBtn.disabled = true;
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    alert('Review updated successfully!');
+                    // Reload the page to show updated data
+                    window.location.reload();
+                } else {
+                    alert('Error updating review: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the review.');
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+    </script>
 </body>
 </html>
