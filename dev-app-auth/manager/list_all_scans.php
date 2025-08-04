@@ -92,13 +92,14 @@ if (!isUserManagerOrAdmin($userId)) {
 }
 
 // Function to get all URL scans from database using RabbitMQ
-function getAllUrlScans($limit = 100, $offset = 0) {
+function getAllUrlScans($limit = 100, $offset = 0, $reviewStatus = 'all') {
     $client = new rabbitMQClient("../testRabbitMQ.ini", "testServer");
     
     $request = array(
         'type' => 'get_all_url_scans',
         'limit' => $limit,
-        'offset' => $offset
+        'offset' => $offset,
+        'review_status' => $reviewStatus
     );
     
     $response = $client->send_request($request);
@@ -130,8 +131,17 @@ $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $perPage = 50;
 $offset = ($page - 1) * $perPage;
 
-// Get all scans for the current page
-$allScans = getAllUrlScans($perPage, $offset);
+// Filter parameters
+$reviewStatusFilter = isset($_GET['review_status']) ? $_GET['review_status'] : 'all';
+
+// Validate review status filter
+$allowedStatuses = ['all', 'pending', 'approved', 'flagged', 'archived'];
+if (!in_array($reviewStatusFilter, $allowedStatuses)) {
+    $reviewStatusFilter = 'all';
+}
+
+// Get all scans for the current page with filtering
+$allScans = getAllUrlScans($perPage, $offset, $reviewStatusFilter);
 
 // Ensure $allScans is an array
 if (!is_array($allScans)) {
@@ -422,6 +432,23 @@ function getUserRoleBadge($userId) {
             font-size: 0.75em;
             color: #6c757d;
         }
+
+        .filter-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 5px solid #007bff;
+        }
+
+        .filter-controls {
+            padding: 1rem;
+        }
+
+        .filter-controls .form-select {
+            max-width: 200px;
+        }
+
+        .filter-badge {
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -457,6 +484,38 @@ function getUserRoleBadge($userId) {
                     </div>
                 </div>
 
+                <!-- Filter Controls -->
+                <div class="card filter-card mb-4">
+                    <div class="filter-controls">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h5 class="mb-0">Filter Scans</h5>
+                            </div>
+                            <div class="col-md-6">
+                                <form method="GET" class="d-flex align-items-center gap-3">
+                                    <label for="review_status" class="form-label mb-0">Review Status:</label>
+                                    <select name="review_status" id="review_status" class="form-select" onchange="this.form.submit()">
+                                        <option value="all" <?php echo $reviewStatusFilter === 'all' ? 'selected' : ''; ?>>All Scans</option>
+                                        <option value="pending" <?php echo $reviewStatusFilter === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                        <option value="approved" <?php echo $reviewStatusFilter === 'approved' ? 'selected' : ''; ?>>Approved</option>
+                                        <option value="flagged" <?php echo $reviewStatusFilter === 'flagged' ? 'selected' : ''; ?>>Flagged</option>
+                                        <option value="archived" <?php echo $reviewStatusFilter === 'archived' ? 'selected' : ''; ?>>Archived</option>
+                                    </select>
+                                    <?php if (isset($_GET['page']) && $_GET['page'] > 1): ?>
+                                        <input type="hidden" name="page" value="<?php echo $_GET['page']; ?>">
+                                    <?php endif; ?>
+                                </form>
+                            </div>
+                        </div>
+                        <?php if ($reviewStatusFilter !== 'all'): ?>
+                            <div class="mt-3">
+                                <span class="badge bg-primary filter-badge">Showing: <?php echo ucfirst($reviewStatusFilter); ?> scans</span>
+                                <a href="?<?php echo isset($_GET['page']) ? 'page=' . $_GET['page'] : ''; ?>" class="btn btn-sm btn-outline-secondary ms-2">Clear Filter</a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Statistics -->
                 <?php if (!empty($allScans)): ?>
                     <div class="row mb-4">
@@ -464,7 +523,13 @@ function getUserRoleBadge($userId) {
                             <div class="stats-card">
                                 <div class="stat-item">
                                     <div class="stat-number"><?php echo count($allScans); ?></div>
-                                    <div class="stat-label">Scans on This Page</div>
+                                    <div class="stat-label">
+                                        <?php if ($reviewStatusFilter !== 'all'): ?>
+                                            <?php echo ucfirst($reviewStatusFilter); ?> Scans
+                                        <?php else: ?>
+                                            Scans on This Page
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -488,13 +553,13 @@ function getUserRoleBadge($userId) {
                                 <div class="stat-item">
                                     <div class="stat-number">
                                         <?php 
-                                        $approvedScans = array_filter($allScans, function($scan) {
-                                            return ($scan['review_status'] ?? 'pending') === 'approved';
+                                        $riskScans = array_filter($allScans, function($scan) {
+                                            return $scan['positive_detections'] > 0;
                                         });
-                                        echo count($approvedScans);
+                                        echo count($riskScans);
                                         ?>
                                     </div>
-                                    <div class="stat-label">Approved</div>
+                                    <div class="stat-label">Risky URLs</div>
                                 </div>
                             </div>
                         </div>
@@ -503,13 +568,13 @@ function getUserRoleBadge($userId) {
                                 <div class="stat-item">
                                     <div class="stat-number">
                                         <?php 
-                                        $pendingScans = array_filter($allScans, function($scan) {
+                                        $needReviewScans = array_filter($allScans, function($scan) {
                                             return ($scan['review_status'] ?? 'pending') === 'pending';
                                         });
-                                        echo count($pendingScans);
+                                        echo count($needReviewScans);
                                         ?>
                                     </div>
-                                    <div class="stat-label">Pending Review</div>
+                                    <div class="stat-label">Need Review</div>
                                 </div>
                             </div>
                         </div>
@@ -519,8 +584,13 @@ function getUserRoleBadge($userId) {
                 <?php if (empty($allScans)): ?>
                     <div class="no-scans">
                         <h4 class="mb-3">No Scans Found</h4>
-                        <p>No URL scans have been performed yet on this platform.</p>
-                        <a href="../check-url.php" class="btn btn-primary mt-3">Go to URL Scanner</a>
+                        <?php if ($reviewStatusFilter !== 'all'): ?>
+                            <p>No URL scans with status "<strong><?php echo ucfirst($reviewStatusFilter); ?></strong>" found.</p>
+                            <a href="?page=<?php echo $page; ?>" class="btn btn-outline-primary mt-2">View All Scans</a>
+                        <?php else: ?>
+                            <p>No URL scans have been performed yet on this platform.</p>
+                            <a href="../check-url.php" class="btn btn-primary mt-3">Go to URL Scanner</a>
+                        <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <div class="card table-card">
@@ -631,7 +701,7 @@ function getUserRoleBadge($userId) {
                             <ul class="pagination">
                                 <?php if ($page > 1): ?>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page=<?php echo $page - 1; ?>" aria-label="Previous">
+                                        <a class="page-link" href="?page=<?php echo $page - 1; ?><?php echo $reviewStatusFilter !== 'all' ? '&review_status=' . $reviewStatusFilter : ''; ?>" aria-label="Previous">
                                             <span aria-hidden="true">&laquo;</span>
                                         </a>
                                     </li>
@@ -639,13 +709,13 @@ function getUserRoleBadge($userId) {
                                 
                                 <?php for ($i = max(1, $page - 2); $i <= $page + 2; $i++): ?>
                                     <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                        <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                                        <a class="page-link" href="?page=<?php echo $i; ?><?php echo $reviewStatusFilter !== 'all' ? '&review_status=' . $reviewStatusFilter : ''; ?>"><?php echo $i; ?></a>
                                     </li>
                                 <?php endfor; ?>
                                 
                                 <?php if (count($allScans) == $perPage): ?>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page=<?php echo $page + 1; ?>" aria-label="Next">
+                                        <a class="page-link" href="?page=<?php echo $page + 1; ?><?php echo $reviewStatusFilter !== 'all' ? '&review_status=' . $reviewStatusFilter : ''; ?>" aria-label="Next">
                                             <span aria-hidden="true">&raquo;</span>
                                         </a>
                                     </li>

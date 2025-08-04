@@ -306,29 +306,43 @@ function getUserDomainScans($userId, $limit = 50) {
     return $result;
 }
 
-function getAllUrlScans($limit = 100, $offset = 0) {
+function getAllUrlScans($limit = 100, $offset = 0, $reviewStatus = 'all') {
     $conn = getDBConnection();
     
     if (!$conn) {
         return false;
     }
     
-    $stmt = $conn->prepare("
+    // Build the query with optional WHERE clause for review_status filtering
+    $whereClause = "";
+    $bindTypes = "ii";
+    $bindValues = [$limit, $offset];
+    
+    if ($reviewStatus !== 'all') {
+        $whereClause = "WHERE us.review_status = ?";
+        $bindTypes = "sii";
+        array_unshift($bindValues, $reviewStatus);
+    }
+    
+    $query = "
         SELECT us.*, u.username, u.email, 
                reviewer.username as reviewer_username
         FROM url_scans us
         LEFT JOIN Users u ON us.user_id = u.id
         LEFT JOIN Users reviewer ON us.reviewed_by = reviewer.id
+        {$whereClause}
         ORDER BY us.scan_timestamp DESC 
         LIMIT ? OFFSET ?
-    ");
+    ";
+    
+    $stmt = $conn->prepare($query);
     
     if (!$stmt) {
         $conn->close();
         return false;
     }
     
-    $stmt->bind_param("ii", $limit, $offset);
+    $stmt->bind_param($bindTypes, ...$bindValues);
     $stmt->execute();
     $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -883,7 +897,8 @@ function request_processor($request)
         case 'get_all_url_scans':
             $limit = $request['limit'] ?? 100;
             $offset = $request['offset'] ?? 0;
-            $scans = getAllUrlScans($limit, $offset);
+            $reviewStatus = $request['review_status'] ?? 'all';
+            $scans = getAllUrlScans($limit, $offset, $reviewStatus);
             if ($scans !== false) {
                 return array("success" => true, "scans" => $scans);
             } else {
