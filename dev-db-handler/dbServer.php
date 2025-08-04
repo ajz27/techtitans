@@ -186,11 +186,113 @@ function saveUrlScan($userId, $scanData) {
     }
 }
 
+function saveDomainScan($userId, $scanData) {
+    $conn = getDBConnection();
+    
+    try {
+        $scanResult = $scanData['scan_result'];
+        $scannedDomain = $scanData['scanned_domain'];
+        $scanTimestamp = $scanData['scan_timestamp'];
+        
+        // Extract data from VirusTotal v3 API response
+        $vtId = isset($scanResult['data']['id']) ? $scanResult['data']['id'] : $scannedDomain;
+        
+        // Analysis statistics
+        $harmlessCount = 0;
+        $maliciousCount = 0;
+        $suspiciousCount = 0;
+        $undetectedCount = 0;
+        $timeoutCount = 0;
+        
+        if (isset($scanResult['data']['attributes']['last_analysis_stats'])) {
+            $stats = $scanResult['data']['attributes']['last_analysis_stats'];
+            $harmlessCount = $stats['harmless'] ?? 0;
+            $maliciousCount = $stats['malicious'] ?? 0;
+            $suspiciousCount = $stats['suspicious'] ?? 0;
+            $undetectedCount = $stats['undetected'] ?? 0;
+            $timeoutCount = $stats['timeout'] ?? 0;
+        }
+        
+        // Key metadata
+        $reputation = isset($scanResult['data']['attributes']['reputation']) ? $scanResult['data']['attributes']['reputation'] : 0;
+        
+        $lastAnalysisDate = null;
+        if (isset($scanResult['data']['attributes']['last_analysis_date'])) {
+            $lastAnalysisDate = date('Y-m-d H:i:s', $scanResult['data']['attributes']['last_analysis_date']);
+        }
+        
+        $creationDate = null;
+        if (isset($scanResult['data']['attributes']['creation_date'])) {
+            $creationDate = date('Y-m-d H:i:s', $scanResult['data']['attributes']['creation_date']);
+        }
+        
+        $registrar = isset($scanResult['data']['attributes']['registrar']) ? $scanResult['data']['attributes']['registrar'] : null;
+        
+        // VirusTotal permalink
+        $vtPermalink = isset($scanResult['data']['links']['self']) ? $scanResult['data']['links']['self'] : null;
+        
+        // Status
+        $status = 'completed';
+        if (isset($scanResult['error'])) {
+            $status = 'failed';
+        }
+        
+        // Raw response as JSON
+        $rawResponse = json_encode($scanResult);
+        
+        $stmt = $conn->prepare("
+            INSERT INTO domain_scans (
+                user_id, scanned_domain, scan_timestamp, vt_id, 
+                harmless_count, malicious_count, suspicious_count, undetected_count, timeout_count,
+                reputation, last_analysis_date, creation_date, registrar, vt_permalink, 
+                status, raw_response
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->bind_param(
+            "isssiiiiiisissss",
+            $userId, $scannedDomain, $scanTimestamp, $vtId,
+            $harmlessCount, $maliciousCount, $suspiciousCount, $undetectedCount, $timeoutCount,
+            $reputation, $lastAnalysisDate, $creationDate, $registrar, $vtPermalink,
+            $status, $rawResponse
+        );
+        
+        $stmt->execute();
+        $insertedId = $conn->insert_id;
+        $stmt->close();
+        $conn->close();
+        
+        return $insertedId;
+        
+    } catch (Exception $e) {
+        $conn->close();
+        throw new Exception("Failed to save domain scan: " . $e->getMessage());
+    }
+}
+
 function getUserUrlScans($userId, $limit = 50) {
     $conn = getDBConnection();
     
     $stmt = $conn->prepare("
         SELECT * FROM url_scans 
+        WHERE user_id = ? 
+        ORDER BY scan_timestamp DESC 
+        LIMIT ?
+    ");
+    $stmt->bind_param("ii", $userId, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
+function getUserDomainScans($userId, $limit = 50) {
+    $conn = getDBConnection();
+    
+    $stmt = $conn->prepare("
+        SELECT * FROM domain_scans 
         WHERE user_id = ? 
         ORDER BY scan_timestamp DESC 
         LIMIT ?
@@ -218,6 +320,37 @@ function getAllUrlScans($limit = 100, $offset = 0) {
         LEFT JOIN Users u ON us.user_id = u.id
         LEFT JOIN Users reviewer ON us.reviewed_by = reviewer.id
         ORDER BY us.scan_timestamp DESC 
+        LIMIT ? OFFSET ?
+    ");
+    
+    if (!$stmt) {
+        $conn->close();
+        return false;
+    }
+    
+    $stmt->bind_param("ii", $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return $result;
+}
+
+function getAllDomainScans($limit = 100, $offset = 0) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return false;
+    }
+    
+    $stmt = $conn->prepare("
+        SELECT ds.*, u.username, u.email, 
+               reviewer.username as reviewer_username
+        FROM domain_scans ds
+        LEFT JOIN Users u ON ds.user_id = u.id
+        LEFT JOIN Users reviewer ON ds.reviewed_by = reviewer.id
+        ORDER BY ds.scan_timestamp DESC 
         LIMIT ? OFFSET ?
     ");
     
@@ -637,12 +770,95 @@ function request_processor($request)
             }
             return login($request['username'], $request['password']);
 
+        // --- NEW SCAN HANDLERS ---
+        case 'submit_scan':
+            if (!isset($request['user_id']) || !isset($request['scan_type']) || !isset($request['input_value'])) {
+                return array("success" => false, "message" => "missing user_id, scan_type, or input_value");
+            }
+            return [
+                "success" => true,
+                "scan_id" => submitScan($request['user_id'], $request['scan_type'], $request['input_value'])
+            ];
+
+        case 'view_scan_result':
+            if (!isset($request['scan_id'])) {
+                return array("success" => false, "message" => "missing scan_id");
+            }
+            return [
+                "success" => true,
+                "result" => viewScanResult($request['scan_id'])
+            ];
+
+
+        case 'get_scan_history':
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $limit = $request['limit'] ?? 10;
+            $offset = $request['offset'] ?? 0;
+            return [
+                "success" => true,
+                "history" => getScanHistory($request['user_id'], $limit, $offset)
+            ];
+
+
+        case 'manager_review_scans':
+            $limit = $request['limit'] ?? 10;
+            $offset = $request['offset'] ?? 0;
+            return [
+                "success" => true,
+                "scans" => getClientScansForReview($limit, $offset)
+            ];
+
+
+        case 'flag_scan':
+            if (!isset($request['scan_id']) || !isset($request['user_id']) || !isset($request['reason'])) {
+                return array("success" => false, "message" => "missing scan_id, user_id, or reason");
+            }
+            $result = flagScan($request['scan_id'], $request['user_id'], $request['reason']);
+            return ['success' => $result];
+
+        case 'get_flagged_scans':
+            return [
+                "success" => true,
+                "flags" => getFlaggedScans()
+            ];
+
+
+        case 'admin_get_all_scans':
+            $limit = $request['limit'] ?? 10;
+            $offset = $request['offset'] ?? 0;
+            return [
+                "success" => true,
+                "scans" => getAllScans($limit, $offset)
+            ];
+
+        case 'admin_check_duplicates':
+            if (!isset($request['input_value'])) {
+                return array("success" => false, "message" => "missing input_value");
+            }
+            return [
+                "success" => true,
+                "duplicates" => findDuplicateSubmissions($request['input_value'])
+            ];
+
         case 'save_url_scan':
             if (!isset($request['user_id']) || !isset($request['scan_data'])) {
                 return array("success" => false, "message" => "missing required parameters");
             }
             try {
                 $scanId = saveUrlScan($request['user_id'], $request['scan_data']);
+                return array("success" => true, "scan_id" => $scanId);
+            } catch (Exception $e) {
+                return array("success" => false, "message" => $e->getMessage());
+            }
+
+        case 'save_domain_scan':
+            if (!isset($request['user_id']) || !isset($request['scan_data'])) {
+                return array("success" => false, "message" => "missing required parameters");
+            }
+            try {
+                $scanId = saveDomainScan($request['user_id'], $request['scan_data']);
                 return array("success" => true, "scan_id" => $scanId);
             } catch (Exception $e) {
                 return array("success" => false, "message" => $e->getMessage());
@@ -656,6 +872,14 @@ function request_processor($request)
             $scans = getUserUrlScans($request['user_id'], $limit);
             return array("success" => true, "scans" => $scans);
 
+        case 'get_user_domain_scans':
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $limit = $request['limit'] ?? 50;
+            $scans = getUserDomainScans($request['user_id'], $limit);
+            return array("success" => true, "scans" => $scans);
+
         case 'get_all_url_scans':
             $limit = $request['limit'] ?? 100;
             $offset = $request['offset'] ?? 0;
@@ -664,6 +888,16 @@ function request_processor($request)
                 return array("success" => true, "scans" => $scans);
             } else {
                 return array("success" => false, "message" => "failed to retrieve scans");
+            }
+
+        case 'get_all_domain_scans':
+            $limit = $request['limit'] ?? 100;
+            $offset = $request['offset'] ?? 0;
+            $scans = getAllDomainScans($limit, $offset);
+            if ($scans !== false) {
+                return array("success" => true, "scans" => $scans);
+            } else {
+                return array("success" => false, "message" => "failed to retrieve domain scans");
             }
 
         case 'get_all_users':

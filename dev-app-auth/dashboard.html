@@ -69,18 +69,43 @@
 
   <!-- URL Checker Form -->
   <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card w-100" style="max-width: 500px;">
-      <h3 class="text-center mb-4">🔎 URL Checker Tool</h3>
-      <p class="text-center mb-4">Scan any URL against VirusTotal to check for security threats</p>
-      <form action="check-url.php" method="POST">
-        <div class="mb-3">
-          <label for="url" class="form-label">Website URL</label>
-          <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com" required />
+    <div class="row w-100 justify-content-center">
+      <!-- URL Scanner Card -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <h3 class="text-center mb-4">🔎 URL Scanner</h3>
+          <p class="text-center mb-4">Scan any URL against VirusTotal to check for security threats</p>
+          <form action="check-url.php" method="POST">
+            <div class="mb-3">
+              <label for="url" class="form-label">Website URL</label>
+              <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com" required />
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mb-3">Scan URL</button>
+          </form>
         </div>
-        <button type="submit" class="btn btn-primary w-100 mb-3">Scan URL</button>
-      </form>
-      <div class="text-center mt-4">
-        <a href="view_scan_history.php" class="btn btn-outline-primary">View Scan History</a>
+      </div>
+      
+      <!-- Domain Scanner Card -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <h3 class="text-center mb-4">🌐 Domain Scanner</h3>
+          <p class="text-center mb-4">Analyze any domain for reputation and security information</p>
+          <form action="check-domain.php" method="POST">
+            <div class="mb-3">
+              <label for="domain" class="form-label">Domain Name</label>
+              <input type="text" class="form-control" id="domain" name="domain" placeholder="example.com" required />
+              <small class="form-text text-muted">Enter domain without http:// or https://</small>
+            </div>
+            <button type="submit" class="btn btn-success w-100 mb-3">Scan Domain</button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Scan History Card -->
+      <div class="col-12">
+        <div class="text-center mt-4">
+          <a href="view_scan_history.php" class="btn btn-outline-primary btn-lg">View Scan History</a>
+        </div>
       </div>
     </div>
   </div>
