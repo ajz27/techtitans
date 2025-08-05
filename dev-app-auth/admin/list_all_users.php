@@ -6,20 +6,13 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
 // Include required files
-require_once('../session_check.inc');
 require_once('../path.inc');
 require_once('../get_host_info.inc');
 require_once('../rabbitMQLib.inc');
 
-// Check user role - Admin only
-$user = getSessionUser();
-$isAdmin = ($user && $user['role_id'] == 1);
-$isManager = ($user && $user['role_id'] == 2);
-$isUser = ($user && $user['role_id'] == 3);
-
-// Redirect if not admin
-if (!$isAdmin) {
-    header("Location: ../dashboard.php");
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../login.html");
     exit();
 }
 
@@ -448,12 +441,9 @@ function getRoleBadgeClass($roleId) {
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="../index.php">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="../dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="../profile.php">Profile</a></li>
-                    <li class="nav-item"><a class="nav-link" href="../view_scan_history.php">Scan History</a></li>
-                    <li class="nav-item"><a class="nav-link manager-link" href="../manager/list_all_scans.php">📋 Manager Panel</a></li>
-                    <li class="nav-item"><a class="nav-link admin-link active" href="list_all_users.php">👑 Admin Panel</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="list_all_users.php">All Users</a></li>
                     <li class="nav-item"><a class="nav-link text-danger" href="../logout.php">Logout</a></li>
                 </ul>
             </div>

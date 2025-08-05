@@ -16,8 +16,8 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id'];
 $username = $_SESSION['username'] ?? 'User';
 
-// Function to check if user is admin or manager
-function getUserRole($userId) {
+// Function to check if user is admin
+function isUserAdmin($userId) {
     $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
     
     $request = array(
@@ -33,15 +33,13 @@ function getUserRole($userId) {
     }
     
     if (isset($response['success']) && $response['success'] && isset($response['role'])) {
-        return $response['role']['role_id'];
+        return $response['role']['role_id'] == 1; // Admin role_id is 1
     }
     
-    return null;
+    return false;
 }
 
-$userRole = getUserRole($userId);
-$isAdmin = ($userRole == 1);
-$isManager = ($userRole == 2);
+$isAdmin = isUserAdmin($userId);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,20 +78,6 @@ $isManager = ($userRole == 2);
 
     .nav-link.admin-link:hover {
       color: #ff8a9a !important;
-    }
-
-    .nav-link.manager-link {
-      color: #ffc107 !important;
-      font-weight: 600;
-    }
-
-    .nav-link.manager-link:hover {
-      color: #ffda6a !important;
-    }
-
-    .nav-link.active {
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 0.375rem;
     }
 
     .card {
@@ -136,18 +120,12 @@ $isManager = ($userRole == 2);
   <nav class="navbar navbar-expand-lg">
     <div class="container">
       <a class="navbar-brand" href="#">Tech Titans</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <div class="collapse navbar-collapse justify-content-end">
         <ul class="navbar-nav">
           <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
           <li class="nav-item"><a class="nav-link active" href="dashboard.php">Dashboard</a></li>
           <li class="nav-item"><a class="nav-link" href="view_scan_history.php">Scan History</a></li>
-          <?php if ($isManager || $isAdmin): ?>
-          <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
-          <?php endif; ?>
           <?php if ($isAdmin): ?>
           <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
           <?php endif; ?>

@@ -6,16 +6,15 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL & ~E_DEPRECATED);
 
 // Include required files
-require_once('session_check.inc');
 require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 
-// Check user role
-$user = getSessionUser();
-$isAdmin = ($user && $user['role_id'] == 1);
-$isManager = ($user && $user['role_id'] == 2);
-$isUser = ($user && $user['role_id'] == 3);
+// Redirect to login if not logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.html");
+    exit();
+}
 
 // Get user information from session
 $userId = $_SESSION['user_id'];
@@ -197,12 +196,6 @@ function formatDate($dateString) {
                     <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
                     <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="view_scan_history.php">Scan History</a></li>
-                    <?php if ($isManager || $isAdmin): ?>
-                    <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
-                    <?php endif; ?>
-                    <?php if ($isAdmin): ?>
-                    <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
-                    <?php endif; ?>
                     <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
                 </ul>
             </div>

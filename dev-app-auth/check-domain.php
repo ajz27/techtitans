@@ -4,12 +4,6 @@ session_start();
 require_once('session_check.inc');
 require_once('rabbitMQLib.inc');
 
-// Check user role
-$user = getSessionUser();
-$isAdmin = ($user && $user['role_id'] == 1);
-$isManager = ($user && $user['role_id'] == 2);
-$isUser = ($user && $user['role_id'] == 3);
-
 $domain = "";
 $scanResult = null;
 $error = "";
@@ -158,14 +152,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['domain'])) {
         <ul class="navbar-nav ms-auto">
           <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
           <li class="nav-item"><a class="nav-link" href="view_scan_history.php">Scan History</a></li>
-          <?php if ($isManager || $isAdmin): ?>
-          <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
-          <?php endif; ?>
-          <?php if ($isAdmin): ?>
-          <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
-          <?php endif; ?>
           <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
         </ul>
       </div>
