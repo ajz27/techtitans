@@ -234,11 +234,6 @@ function formatDate($dateString) {
             <div class="form-text">Maximum 100 characters</div>
           </div>
           
-          <div class="mb-3">
-            <label class="form-label">User ID:</label>
-            <input type="text" class="form-control" value="<?= $user['user_id'] ?>" readonly>
-          </div>
-          
           <div class="text-center">
             <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
           </div>
