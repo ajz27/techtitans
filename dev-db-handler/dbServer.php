@@ -763,6 +763,150 @@ function updateScanReview($scanId, $reviewStatus, $reviewNotes, $reviewerId) {
     }
 }
 
+function updateUserProfile($userId, $newUsername, $newEmail) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return array("success" => false, "message" => "database connection failed");
+    }
+    
+    // Check if user exists
+    $userCheck = $conn->prepare("SELECT id, username, email FROM Users WHERE id = ?");
+    if (!$userCheck) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $userCheck->bind_param("i", $userId);
+    $userCheck->execute();
+    $userResult = $userCheck->get_result();
+    
+    if ($userResult->num_rows === 0) {
+        $userCheck->close();
+        $conn->close();
+        return array("success" => false, "message" => "user not found");
+    }
+    
+    $currentUser = $userResult->fetch_assoc();
+    $userCheck->close();
+    
+    // Check if new email already exists (if it's different from current email)
+    if ($newEmail !== $currentUser['email']) {
+        $emailCheck = $conn->prepare("SELECT id FROM Users WHERE email = ? AND id != ?");
+        if (!$emailCheck) {
+            $conn->close();
+            return array("success" => false, "message" => "database query error");
+        }
+        
+        $emailCheck->bind_param("si", $newEmail, $userId);
+        $emailCheck->execute();
+        $emailResult = $emailCheck->get_result();
+        
+        if ($emailResult->num_rows > 0) {
+            $emailCheck->close();
+            $conn->close();
+            return array("success" => false, "message" => "email already exists");
+        }
+        $emailCheck->close();
+    }
+    
+    // Check if new username already exists (if it's different from current username)
+    if ($newUsername !== $currentUser['username']) {
+        $usernameCheck = $conn->prepare("SELECT id FROM Users WHERE username = ? AND id != ?");
+        if (!$usernameCheck) {
+            $conn->close();
+            return array("success" => false, "message" => "database query error");
+        }
+        
+        $usernameCheck->bind_param("si", $newUsername, $userId);
+        $usernameCheck->execute();
+        $usernameResult = $usernameCheck->get_result();
+        
+        if ($usernameResult->num_rows > 0) {
+            $usernameCheck->close();
+            $conn->close();
+            return array("success" => false, "message" => "username already exists");
+        }
+        $usernameCheck->close();
+    }
+    
+    // Update user profile
+    $updateStmt = $conn->prepare("UPDATE Users SET username = ?, email = ?, modified = CURRENT_TIMESTAMP WHERE id = ?");
+    if (!$updateStmt) {
+        $conn->close();
+        return array("success" => false, "message" => "database prepare error");
+    }
+    
+    $updateStmt->bind_param("ssi", $newUsername, $newEmail, $userId);
+    
+    if ($updateStmt->execute()) {
+        $updateStmt->close();
+        $conn->close();
+        return array(
+            "success" => true, 
+            "message" => "profile updated successfully",
+            "user" => array(
+                "user_id" => $userId,
+                "username" => $newUsername,
+                "email" => $newEmail
+            )
+        );
+    } else {
+        $error = $updateStmt->error;
+        $updateStmt->close();
+        $conn->close();
+        return array("success" => false, "message" => "update failed: " . $error);
+    }
+}
+
+function getUserUrlScansWithPagination($userId, $limit = 10, $offset = 0) {
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        return array("success" => false, "message" => "database connection failed");
+    }
+    
+    // Get total count
+    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM url_scans WHERE user_id = ?");
+    if (!$countStmt) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $countStmt->bind_param("i", $userId);
+    $countStmt->execute();
+    $countResult = $countStmt->get_result();
+    $totalScans = $countResult->fetch_assoc()['total'];
+    $countStmt->close();
+    
+    // Get scans with pagination
+    $stmt = $conn->prepare("
+        SELECT * FROM url_scans 
+        WHERE user_id = ? 
+        ORDER BY scan_timestamp DESC 
+        LIMIT ? OFFSET ?
+    ");
+    
+    if (!$stmt) {
+        $conn->close();
+        return array("success" => false, "message" => "database query error");
+    }
+    
+    $stmt->bind_param("iii", $userId, $limit, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $conn->close();
+    
+    return array(
+        "success" => true,
+        "scans" => $result,
+        "total" => $totalScans,
+        "limit" => $limit,
+        "offset" => $offset
+    );
+}
+
 function request_processor($request)
 {
     echo "received request: " . json_encode($request) . "\n";
@@ -941,6 +1085,20 @@ function request_processor($request)
             } else {
                 return array("success" => false, "message" => "failed to retrieve roles");
             }
+
+        case 'update_user_profile':
+            if (!isset($request['user_id']) || !isset($request['username']) || !isset($request['email'])) {
+                return array("success" => false, "message" => "missing user_id, username, or email");
+            }
+            return updateUserProfile($request['user_id'], $request['username'], $request['email']);
+
+        case 'get_user_url_scans_paginated':
+            if (!isset($request['user_id'])) {
+                return array("success" => false, "message" => "missing user_id");
+            }
+            $limit = isset($request['limit']) ? (int)$request['limit'] : 10;
+            $offset = isset($request['offset']) ? (int)$request['offset'] : 0;
+            return getUserUrlScansWithPagination($request['user_id'], $limit, $offset);
 
         case 'update_user_role':
             if (!isset($request['user_id']) || !isset($request['new_role_id']) || !isset($request['admin_user_id'])) {
