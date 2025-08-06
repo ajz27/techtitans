@@ -141,20 +141,51 @@ function formatDate($dateString) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
   <style>
     body {
-      background: linear-gradient(to right, #dfe9f3, #ffffff);
+      background: linear-gradient(135deg, #f0eff2, #66a6ff);
       font-family: 'Segoe UI', sans-serif;
-      min-height: 100vh;
       margin: 0;
+      min-height: 100vh;
     }
+    
     .navbar {
-      background-color: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      background-color: rgba(0, 0, 0, 0.85);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
+
+    .navbar-brand,
+    .nav-link {
+      color: #fff !important;
+      font-weight: 500;
+    }
+
+    .nav-link:hover {
+      color: #ffd700 !important;
+    }
+
+    .nav-link.active {
+      color: #ffd700 !important;
+      font-weight: bold;
+    }
+
+    .manager-link {
+      background: linear-gradient(45deg, #28a745, #20c997);
+      border-radius: 0.375rem;
+      padding: 0.375rem 0.75rem !important;
+      margin: 0 0.25rem;
+    }
+
+    .admin-link {
+      background: linear-gradient(45deg, #dc3545, #fd7e14);
+      border-radius: 0.375rem;
+      padding: 0.375rem 0.75rem !important;
+      margin: 0 0.25rem;
+    }
+
     .profile-card, .scan-history-card {
-      background: rgba(255, 255, 255, 0.96);
+      background: rgba(255, 255, 255, 0.95);
       padding: 2rem;
       border-radius: 1rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
       margin-bottom: 2rem;
     }
     .scan-url {
@@ -194,14 +225,21 @@ function formatDate($dateString) {
 <body>
 
 <!-- Navbar -->
-<nav class="navbar navbar-expand-lg sticky-top">
+<nav class="navbar navbar-expand-lg">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="#">Tech Titans</a>
-    <div class="collapse navbar-collapse justify-content-end">
+    <a class="navbar-brand" href="#">Tech Titans</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
       <ul class="navbar-nav">
         <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
         <li class="nav-item"><a class="nav-link active" href="profile.php">Profile</a></li>
-        <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="check-url.php">URL Scan</a></li>
+        <li class="nav-item"><a class="nav-link" href="check-domain.php">Domain Scan</a></li>
+        <li class="nav-item"><a class="nav-link" href="view_scan_history.php">Scan History</a></li>
+        <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
+        <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
         <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
       </ul>
     </div>
