@@ -63,7 +63,10 @@ if (!is_array($scanHistory)) {
 
 // Define function to get severity class based on positive detections
 function getSeverityClass($positives, $total) {
-    if ($total === 0) return 'neutral';
+    // Handle case where total is 0 or null to prevent division by zero
+    if ($total === 0 || $total === null || !is_numeric($total)) {
+        return 'neutral';
+    }
     
     $ratio = $positives / $total;
     if ($ratio >= 0.7) return 'high-risk';
@@ -310,7 +313,5 @@ function formatDate($dateString) {
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
 </body>
 </html>
