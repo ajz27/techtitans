@@ -456,8 +456,8 @@ function formatDate($dateString) {
                                                         ?>
                                                     </td>
                                                     <td>
-                                                        <?php if (!empty($scan['vt_permalink'])): ?>
-                                                            <a href="<?php echo htmlspecialchars($scan['vt_permalink']); ?>" target="_blank" class="btn btn-sm btn-primary">
+                                                        <?php if (!empty($scan['scanned_domain'])): ?>
+                                                            <a href="https://www.virustotal.com/gui/domain/<?php echo urlencode($scan['scanned_domain']); ?>" target="_blank" class="btn btn-sm btn-primary">
                                                                 View Report
                                                             </a>
                                                         <?php else: ?>
