@@ -189,72 +189,34 @@ function saveUrlScan($userId, $scanData) {
 function saveDomainScan($userId, $scanData) {
     $conn = getDBConnection();
     
+    if (!$conn) {
+        throw new Exception("Database connection failed");
+    }
+    
     try {
-        $scanResult = $scanData['scan_result'];
-        $scannedDomain = $scanData['scanned_domain'];
-        $scanTimestamp = $scanData['scan_timestamp'];
-        
-        // Extract data from VirusTotal v3 API response
-        $vtId = isset($scanResult['data']['id']) ? $scanResult['data']['id'] : $scannedDomain;
-        
-        // Analysis statistics
-        $harmlessCount = 0;
-        $maliciousCount = 0;
-        $suspiciousCount = 0;
-        $undetectedCount = 0;
-        $timeoutCount = 0;
-        
-        if (isset($scanResult['data']['attributes']['last_analysis_stats'])) {
-            $stats = $scanResult['data']['attributes']['last_analysis_stats'];
-            $harmlessCount = $stats['harmless'] ?? 0;
-            $maliciousCount = $stats['malicious'] ?? 0;
-            $suspiciousCount = $stats['suspicious'] ?? 0;
-            $undetectedCount = $stats['undetected'] ?? 0;
-            $timeoutCount = $stats['timeout'] ?? 0;
-        }
-        
-        // Key metadata
-        $reputation = isset($scanResult['data']['attributes']['reputation']) ? $scanResult['data']['attributes']['reputation'] : 0;
-        
-        $lastAnalysisDate = null;
-        if (isset($scanResult['data']['attributes']['last_analysis_date'])) {
-            $lastAnalysisDate = date('Y-m-d H:i:s', $scanResult['data']['attributes']['last_analysis_date']);
-        }
-        
-        $creationDate = null;
-        if (isset($scanResult['data']['attributes']['creation_date'])) {
-            $creationDate = date('Y-m-d H:i:s', $scanResult['data']['attributes']['creation_date']);
-        }
-        
-        $registrar = isset($scanResult['data']['attributes']['registrar']) ? $scanResult['data']['attributes']['registrar'] : null;
-        
-        // VirusTotal permalink
-        $vtPermalink = isset($scanResult['data']['links']['self']) ? $scanResult['data']['links']['self'] : null;
-        
-        // Status
-        $status = 'completed';
-        if (isset($scanResult['error'])) {
-            $status = 'failed';
-        }
-        
-        // Raw response as JSON
-        $rawResponse = json_encode($scanResult);
-        
         $stmt = $conn->prepare("
             INSERT INTO domain_scans (
-                user_id, scanned_domain, scan_timestamp, vt_id, 
-                harmless_count, malicious_count, suspicious_count, undetected_count, timeout_count,
-                reputation, last_analysis_date, creation_date, registrar, vt_permalink, 
-                status, raw_response
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                user_id, scanned_domain, scan_timestamp, total_engines, positive_detections,
+                harmless_count, malicious_count, suspicious_count, undetected_count,
+                reputation_score, vt_permalink, scan_status, raw_response
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->bind_param(
-            "isssiiiiiisissss",
-            $userId, $scannedDomain, $scanTimestamp, $vtId,
-            $harmlessCount, $maliciousCount, $suspiciousCount, $undetectedCount, $timeoutCount,
-            $reputation, $lastAnalysisDate, $creationDate, $registrar, $vtPermalink,
-            $status, $rawResponse
+            "issiiiiiiiiss",
+            $userId,
+            $scanData['scanned_domain'],
+            $scanData['scan_timestamp'],
+            $scanData['total_engines'],
+            $scanData['positive_detections'],
+            $scanData['harmless_count'],
+            $scanData['malicious_count'],
+            $scanData['suspicious_count'],
+            $scanData['undetected_count'],
+            $scanData['reputation_score'],
+            $scanData['vt_permalink'],
+            $scanData['scan_status'],
+            $scanData['raw_response']
         );
         
         $stmt->execute();
@@ -265,7 +227,9 @@ function saveDomainScan($userId, $scanData) {
         return $insertedId;
         
     } catch (Exception $e) {
-        $conn->close();
+        if ($conn) {
+            $conn->close();
+        }
         throw new Exception("Failed to save domain scan: " . $e->getMessage());
     }
 }
@@ -290,6 +254,10 @@ function getUserUrlScans($userId, $limit = 50) {
 
 function getUserDomainScans($userId, $limit = 50) {
     $conn = getDBConnection();
+    
+    if (!$conn) {
+        return array();
+    }
     
     $stmt = $conn->prepare("
         SELECT * FROM domain_scans 
@@ -359,11 +327,9 @@ function getAllDomainScans($limit = 100, $offset = 0) {
     }
     
     $stmt = $conn->prepare("
-        SELECT ds.*, u.username, u.email, 
-               reviewer.username as reviewer_username
+        SELECT ds.*, u.username, u.email
         FROM domain_scans ds
         LEFT JOIN Users u ON ds.user_id = u.id
-        LEFT JOIN Users reviewer ON ds.reviewed_by = reviewer.id
         ORDER BY ds.scan_timestamp DESC 
         LIMIT ? OFFSET ?
     ");

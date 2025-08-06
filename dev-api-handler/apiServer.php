@@ -137,11 +137,53 @@ function saveDomainScanToDatabase($userId, $scannedDomain, $scanResult) {
         // Create database client
         $dbClient = new rabbitMQClient("testRabbitMQ.ini", "testServer");
         
+        // Extract statistics from VirusTotal v3 API response
+        $totalEngines = 0;
+        $positiveDetections = 0;
+        $harmlessCount = 0;
+        $maliciousCount = 0;
+        $suspiciousCount = 0;
+        $undetectedCount = 0;
+        $reputationScore = 0;
+        $vtPermalink = '';
+        $scanStatus = 'completed';
+        
+        if (isset($scanResult['data']['attributes']['last_analysis_stats'])) {
+            $stats = $scanResult['data']['attributes']['last_analysis_stats'];
+            $harmlessCount = $stats['harmless'] ?? 0;
+            $maliciousCount = $stats['malicious'] ?? 0;
+            $suspiciousCount = $stats['suspicious'] ?? 0;
+            $undetectedCount = $stats['undetected'] ?? 0;
+            $totalEngines = $harmlessCount + $maliciousCount + $suspiciousCount + $undetectedCount;
+            $positiveDetections = $maliciousCount + $suspiciousCount;
+        }
+        
+        if (isset($scanResult['data']['attributes']['reputation'])) {
+            $reputationScore = $scanResult['data']['attributes']['reputation'];
+        }
+        
+        if (isset($scanResult['data']['links']['self'])) {
+            $vtPermalink = $scanResult['data']['links']['self'];
+        }
+        
+        if (isset($scanResult['error'])) {
+            $scanStatus = 'error';
+        }
+        
         // Prepare domain scan data in the format expected by the database
         $scanData = [
             'scan_timestamp' => date('Y-m-d H:i:s'),
             'scanned_domain' => $scannedDomain,
-            'scan_result' => $scanResult // Already an array now
+            'total_engines' => $totalEngines,
+            'positive_detections' => $positiveDetections,
+            'harmless_count' => $harmlessCount,
+            'malicious_count' => $maliciousCount,
+            'suspicious_count' => $suspiciousCount,
+            'undetected_count' => $undetectedCount,
+            'reputation_score' => $reputationScore,
+            'vt_permalink' => $vtPermalink,
+            'scan_status' => $scanStatus,
+            'raw_response' => json_encode($scanResult)
         ];
         
         // Prepare request for database server
