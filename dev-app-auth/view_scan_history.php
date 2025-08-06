@@ -20,7 +20,7 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id'];
 $username = $_SESSION['username'] ?? 'User';
 
-// Function to get scan history from database using RabbitMQ
+// Function to get URL scan history from database using RabbitMQ
 function getUserScanHistory($userId, $limit = 50) {
     // Create a new RabbitMQ client
     $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
@@ -53,12 +53,49 @@ function getUserScanHistory($userId, $limit = 50) {
     }
 }
 
+// Function to get domain scan history from database using RabbitMQ
+function getUserDomainScanHistory($userId, $limit = 50) {
+    // Create a new RabbitMQ client
+    $client = new rabbitMQClient("testRabbitMQ.ini", "testServer");
+    
+    // Prepare the request
+    $request = array(
+        'type' => 'get_user_domain_scans',
+        'user_id' => $userId,
+        'limit' => $limit
+    );
+    
+    // Send request to the database server
+    $response = $client->send_request($request);
+    
+    // Check if the response is an object and convert it to array if needed
+    if (is_object($response)) {
+        $response = (array)$response;
+    }
+    
+    // Check if response was successful and return the scan data
+    if (isset($response['success']) && $response['success'] && isset($response['scans'])) {
+        // If scans is an object, convert it to array
+        $scans = $response['scans'];
+        if (is_object($scans)) {
+            $scans = (array)$scans;
+        }
+        return $scans;
+    } else {
+        return [];
+    }
+}
+
 // Get scan history for the current user
 $scanHistory = getUserScanHistory($userId);
+$domainScanHistory = getUserDomainScanHistory($userId);
 
-// Ensure $scanHistory is an array
+// Ensure both arrays are arrays
 if (!is_array($scanHistory)) {
     $scanHistory = [];
+}
+if (!is_array($domainScanHistory)) {
+    $domainScanHistory = [];
 }
 
 // Define function to get severity class based on positive detections
@@ -88,7 +125,7 @@ function formatDate($dateString) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Scan History - Tech Titans</title>
+    <title>Scan History - Tech Titans</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -142,10 +179,6 @@ function formatDate($dateString) {
         .welcome-card {
             background: rgba(255, 255, 255, 0.9);
             border-left: 5px solid #007bff;
-        }
-
-        .table-card {
-            background: rgba(255, 255, 255, 0.9);
         }
 
         .scan-url {
@@ -202,6 +235,39 @@ function formatDate($dateString) {
             background-color: #0056b3;
             color: #fff;
         }
+        
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: 1px solid transparent;
+            border-top-left-radius: 0.375rem;
+            border-top-right-radius: 0.375rem;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            border-color: #e9ecef #e9ecef #dee2e6;
+            isolation: isolate;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #495057;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+        
+        .tab-content {
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 0.375rem 0.375rem;
+            padding: 1rem;
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .domain-name {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -232,77 +298,181 @@ function formatDate($dateString) {
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="card welcome-card mb-4">
-                    <h3 class="text-center mb-4">URL Scan History</h3>
+                    <h3 class="text-center mb-4">Scan History</h3>
                     <div class="alert alert-info">
-                        <p class="mb-0">Welcome, <?php echo htmlspecialchars($username); ?>! Here's your URL scan history.</p>
+                        <p class="mb-0">Welcome, <?php echo htmlspecialchars($username); ?>! Here's your complete scan history.</p>
                     </div>
-        
-        <?php if (empty($scanHistory)): ?>
-                    <div class="no-scans">
-                        <h4 class="mb-3">No Scan History Found</h4>
-                        <p>You haven't performed any URL scans yet.</p>
-                        <a href="check-url.php" class="btn btn-primary mt-3">Go to URL Scanner</a>
-                    </div>
-                <?php else: ?>
-                    <div class="card table-card">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Scanned URL</th>
-                                        <th>Scan Date</th>
-                                        <th>Result</th>
-                                        <th>Detection Ratio</th>
-                                        <th>Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php 
-                                    $counter = 1;
-                                    foreach ($scanHistory as $scan): 
-                                        // Convert each scan to an array if it's an object
-                                        if (is_object($scan)) {
-                                            $scan = (array)$scan;
-                                        }
-                                        $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
-                                    ?>
-                                        <tr>
-                                            <td><?php echo $counter++; ?></td>
-                                            <td class="scan-url" title="<?php echo htmlspecialchars($scan['scanned_url']); ?>">
-                                                <?php echo htmlspecialchars($scan['scanned_url']); ?>
-                                            </td>
-                                            <td><?php echo formatDate($scan['scan_timestamp']); ?></td>
-                                            <td class="<?php echo $severityClass; ?>">
-                                                <?php
-                                                if ($scan['positive_detections'] == 0) {
-                                                    echo '✅ Safe';
-                                                } else if ($scan['positive_detections'] < 3) {
-                                                    echo '⚠️ Low Risk';
-                                                } else if ($scan['positive_detections'] < 10) {
-                                                    echo '⚠️ Medium Risk';
-                                                } else {
-                                                    echo '❌ High Risk';
+                    
+                    <!-- Tabs for URL and Domain Scans -->
+                    <ul class="nav nav-tabs" id="scanTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="url-scans-tab" data-bs-toggle="tab" data-bs-target="#url-scans" type="button" role="tab" aria-controls="url-scans" aria-selected="true">
+                                🔗 URL Scans (<?php echo count($scanHistory); ?>)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="domain-scans-tab" data-bs-toggle="tab" data-bs-target="#domain-scans" type="button" role="tab" aria-controls="domain-scans" aria-selected="false">
+                                🌐 Domain Scans (<?php echo count($domainScanHistory); ?>)
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="scanTabsContent">
+                        <!-- URL Scans Tab -->
+                        <div class="tab-pane fade show active" id="url-scans" role="tabpanel" aria-labelledby="url-scans-tab">
+                            <?php if (empty($scanHistory)): ?>
+                                <div class="no-scans">
+                                    <h4 class="mb-3">No URL Scan History Found</h4>
+                                    <p>You haven't performed any URL scans yet.</p>
+                                    <a href="check-url.php" class="btn btn-primary mt-3">Go to URL Scanner</a>
+                                </div>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Scanned URL</th>
+                                                <th>Scan Date</th>
+                                                <th>Result</th>
+                                                <th>Detection Ratio</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php 
+                                            $counter = 1;
+                                            foreach ($scanHistory as $scan): 
+                                                // Convert each scan to an array if it's an object
+                                                if (is_object($scan)) {
+                                                    $scan = (array)$scan;
                                                 }
-                                                ?>
-                                            </td>
-                                            <td><?php echo $scan['positive_detections'] . '/' . $scan['total_engines']; ?></td>
-                                            <td>
-                                                <?php if (!empty($scan['permalink'])): ?>
-                                                    <a href="<?php echo htmlspecialchars($scan['permalink']); ?>" target="_blank" class="btn btn-sm btn-primary">
-                                                        View Report
-                                                    </a>
-                                                <?php else: ?>
-                                                    <span class="text-muted">Report Not Available</span>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                                                $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
+                                            ?>
+                                                <tr>
+                                                    <td><?php echo $counter++; ?></td>
+                                                    <td class="scan-url" title="<?php echo htmlspecialchars($scan['scanned_url']); ?>">
+                                                        <?php echo htmlspecialchars($scan['scanned_url']); ?>
+                                                    </td>
+                                                    <td><?php echo formatDate($scan['scan_timestamp']); ?></td>
+                                                    <td class="<?php echo $severityClass; ?>">
+                                                        <?php
+                                                        if ($scan['positive_detections'] == 0) {
+                                                            echo '✅ Safe';
+                                                        } else if ($scan['positive_detections'] < 3) {
+                                                            echo '⚠️ Low Risk';
+                                                        } else if ($scan['positive_detections'] < 10) {
+                                                            echo '⚠️ Medium Risk';
+                                                        } else {
+                                                            echo '❌ High Risk';
+                                                        }
+                                                        ?>
+                                                    </td>
+                                                    <td><?php echo $scan['positive_detections'] . '/' . $scan['total_engines']; ?></td>
+                                                    <td>
+                                                        <?php if (!empty($scan['permalink'])): ?>
+                                                            <a href="<?php echo htmlspecialchars($scan['permalink']); ?>" target="_blank" class="btn btn-sm btn-primary">
+                                                                View Report
+                                                            </a>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">Report Not Available</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <!-- Domain Scans Tab -->
+                        <div class="tab-pane fade" id="domain-scans" role="tabpanel" aria-labelledby="domain-scans-tab">
+                            <?php if (empty($domainScanHistory)): ?>
+                                <div class="no-scans">
+                                    <h4 class="mb-3">No Domain Scan History Found</h4>
+                                    <p>You haven't performed any domain scans yet.</p>
+                                    <a href="check-domain.php" class="btn btn-primary mt-3">Go to Domain Scanner</a>
+                                </div>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Scanned Domain</th>
+                                                <th>Scan Date</th>
+                                                <th>Result</th>
+                                                <th>Detection Ratio</th>
+                                                <th>Reputation</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php 
+                                            $counter = 1;
+                                            foreach ($domainScanHistory as $scan): 
+                                                // Convert each scan to an array if it's an object
+                                                if (is_object($scan)) {
+                                                    $scan = (array)$scan;
+                                                }
+                                                $severityClass = getSeverityClass($scan['positive_detections'], $scan['total_engines']);
+                                                $reputationClass = 'neutral';
+                                                if (isset($scan['reputation_score'])) {
+                                                    if ($scan['reputation_score'] > 50) $reputationClass = 'safe';
+                                                    elseif ($scan['reputation_score'] > 0) $reputationClass = 'low-risk';
+                                                    elseif ($scan['reputation_score'] < -50) $reputationClass = 'high-risk';
+                                                    elseif ($scan['reputation_score'] < 0) $reputationClass = 'medium-risk';
+                                                }
+                                            ?>
+                                                <tr>
+                                                    <td><?php echo $counter++; ?></td>
+                                                    <td class="domain-name" title="<?php echo htmlspecialchars($scan['scanned_domain']); ?>">
+                                                        <?php echo htmlspecialchars($scan['scanned_domain']); ?>
+                                                    </td>
+                                                    <td><?php echo formatDate($scan['scan_timestamp']); ?></td>
+                                                    <td class="<?php echo $severityClass; ?>">
+                                                        <?php
+                                                        if ($scan['positive_detections'] == 0) {
+                                                            echo '✅ Safe';
+                                                        } else if ($scan['positive_detections'] < 3) {
+                                                            echo '⚠️ Low Risk';
+                                                        } else if ($scan['positive_detections'] < 10) {
+                                                            echo '⚠️ Medium Risk';
+                                                        } else {
+                                                            echo '❌ High Risk';
+                                                        }
+                                                        ?>
+                                                    </td>
+                                                    <td><?php echo $scan['positive_detections'] . '/' . $scan['total_engines']; ?></td>
+                                                    <td class="<?php echo $reputationClass; ?>">
+                                                        <?php 
+                                                        $repScore = $scan['reputation_score'] ?? 0;
+                                                        if ($repScore > 50) echo "👍 {$repScore}";
+                                                        elseif ($repScore > 0) echo "😐 {$repScore}";
+                                                        elseif ($repScore == 0) echo "❓ 0";
+                                                        elseif ($repScore > -50) echo "😟 {$repScore}";
+                                                        else echo "👎 {$repScore}";
+                                                        ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if (!empty($scan['vt_permalink'])): ?>
+                                                            <a href="<?php echo htmlspecialchars($scan['vt_permalink']); ?>" target="_blank" class="btn btn-sm btn-primary">
+                                                                View Report
+                                                            </a>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">Report Not Available</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
-                <?php endif; ?>
+                </div>
                 
                 <div class="text-center mt-4">
                     <a href="index.php" class="btn btn-outline-secondary">Back to Home</a>
