@@ -99,12 +99,8 @@ $isUser = ($user && $user['role_id'] == 3);
         <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
         <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="view_scan_history.php">Scan History</a></li>
-        <?php if ($isManager || $isAdmin): ?>
         <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
-        <?php endif; ?>
-        <?php if ($isAdmin): ?>
         <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
-        <?php endif; ?>
         <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
       </ul>
     </div>
