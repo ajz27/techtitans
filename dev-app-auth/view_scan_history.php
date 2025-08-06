@@ -110,6 +110,25 @@ function formatDate($dateString) {
             color: #ffd700 !important;
         }
 
+        .nav-link.active {
+            color: #ffd700 !important;
+            font-weight: bold;
+        }
+
+        .manager-link {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.75rem !important;
+            margin: 0 0.25rem;
+        }
+
+        .admin-link {
+            background: linear-gradient(45deg, #dc3545, #fd7e14);
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.75rem !important;
+            margin: 0 0.25rem;
+        }
+
         .card {
             border-radius: 1rem;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
@@ -194,8 +213,11 @@ function formatDate($dateString) {
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
-                    <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="check-url.php">URL Scan</a></li>
+                    <li class="nav-item"><a class="nav-link" href="check-domain.php">Domain Scan</a></li>
                     <li class="nav-item"><a class="nav-link active" href="view_scan_history.php">Scan History</a></li>
+                    <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
+                    <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
                     <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Logout</a></li>
                 </ul>
             </div>
@@ -280,7 +302,7 @@ function formatDate($dateString) {
                 <?php endif; ?>
                 
                 <div class="text-center mt-4">
-                    <a href="dashboard.php" class="btn btn-outline-secondary">Back to Dashboard</a>
+                    <a href="index.php" class="btn btn-outline-secondary">Back to Home</a>
                 </div>
             </div>
         </div>
