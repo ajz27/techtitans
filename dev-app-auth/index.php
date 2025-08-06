@@ -97,7 +97,8 @@ $isUser = ($user && $user['role_id'] == 3);
       <ul class="navbar-nav">
         <li class="nav-item"><a class="nav-link active" href="index.php">Home</a></li>
         <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
-        <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="check-url.php">URL Scan</a></li>
+        <li class="nav-item"><a class="nav-link" href="check-domain.php">Domain Scan</a></li>
         <li class="nav-item"><a class="nav-link" href="view_scan_history.php">Scan History</a></li>
         <li class="nav-item"><a class="nav-link manager-link" href="manager/list_all_scans.php">📋 Manager Panel</a></li>
         <li class="nav-item"><a class="nav-link admin-link" href="admin/list_all_users.php">👑 Admin Panel</a></li>
