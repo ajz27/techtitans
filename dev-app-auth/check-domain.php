@@ -398,13 +398,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['domain'])) {
                       </div>
                     <?php endif; ?>
                     
-                    <?php if (isset($scanResult->data->links->self)): ?>
-                      <div class="col-md-6">
-                        <p><strong>VirusTotal Report:</strong> 
-                          <a href="<?php echo $scanResult->data->links->self; ?>" target="_blank" class="btn btn-outline-primary btn-sm">View Full Report</a>
-                        </p>
-                      </div>
-                    <?php endif; ?>
+                    <div class="col-md-6">
+                      <p><strong>VirusTotal Report:</strong> 
+                        <a href="https://www.virustotal.com/gui/domain/<?php echo urlencode($domain); ?>" target="_blank" class="btn btn-outline-primary btn-sm">View Full Report</a>
+                      </p>
+                    </div>
                   </div>
                 </div>
               <?php endif; ?>
